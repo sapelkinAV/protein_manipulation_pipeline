@@ -1,16 +1,19 @@
 import asyncio
 import aiohttp
 import re
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from pathlib import Path
 import json
 from urllib.parse import urljoin
+
+from dataclasses import asdict
+from .membrane_query import MembraneQuery
 
 
 class OPRLMClient:
     """Client for interacting with OPRLM server API."""
     
-    def __init__(self, base_url: str = "https://opm-back.cc.lehigh.edu/opm-backend", ssl_verify: bool = True):
+    def __init__(self, base_url: str = "https://oprlm.org", ssl_verify: bool = True):
         self.base_url = base_url.rstrip('/')
         self.ssl_verify = ssl_verify
         self.session: Optional[aiohttp.ClientSession] = None
@@ -37,18 +40,21 @@ class OPRLMClient:
             self.session = aiohttp.ClientSession(connector=connector)
     
     async def submit_membrane_query(self, pdb_id: str, **kwargs) -> Optional[str]:
-        """Submit membrane system query to OPRLM server."""
+        """OPRLM does not provide membrane processing API - this is a placeholder."""
+        print("WARNING: OPRLM does not provide membrane processing API")
+        print("OPRLM is primarily a static database of pre-oriented membrane proteins")
+        return None
+
+    async def submit_membrane_query_with_config(self, query: MembraneQuery) -> Optional[str]:
+        """Submit membrane system query using structured configuration."""
         url = urljoin(self.base_url, "submit")
         
         await self._ensure_session()
         
-        # Parameters for membrane system processing
-        params = {
-            'pdb_id': pdb_id,
-            'membrane_system': 'true',
-            'orient': 'true',
-            **kwargs
-        }
+        # Convert query to parameters
+        params = query.to_dict()
+        params['membrane_system'] = 'true'
+        params['orient'] = 'true'
         
         try:
             async with self.session.post(url, data=params) as response:
@@ -59,20 +65,44 @@ class OPRLMClient:
                         return result.get('job_id')
                     except json.JSONDecodeError:
                         # Handle HTML response
-                        if 'job_id' in content or 'task_id' in content:
-                            # Extract job ID from HTML or text
-                            import re
-                            job_match = re.search(r'(?:job_id|task_id)\s*:\s*([a-zA-Z0-9_-]+)', content, re.IGNORECASE)
-                            if not job_match:
-                                job_match = re.search(r'Job ID\s*:\s*([a-zA-Z0-9_-]+)', content, re.IGNORECASE)
-                            if job_match:
-                                return job_match.group(1)
+                        job_match = re.search(r'(?:job_id|task_id)\s*:\s*([a-zA-Z0-9_-]+)', content, re.IGNORECASE)
+                        if not job_match:
+                            job_match = re.search(r'Job ID\s*:\s*([a-zA-Z0-9_-]+)', content, re.IGNORECASE)
+                        if job_match:
+                            return job_match.group(1)
                         return None
                 else:
                     return None
         except Exception as e:
-            print(f"Error submitting membrane query: {e}")
+            print(f"Error submitting membrane query with config: {e}")
             return None
+
+    async def process_membrane_system_with_config(self, query: MembraneQuery, output_path: Path,
+                                                poll_interval: float = 2.0, timeout: float = 300.0) -> bool:
+        """Process membrane system using structured configuration."""
+        job_id = await self.submit_membrane_query_with_config(query)
+        if not job_id:
+            return False
+        
+        start_time = asyncio.get_event_loop().time()
+        
+        while True:
+            if asyncio.get_event_loop().time() - start_time > timeout:
+                print("Membrane system processing timed out")
+                return False
+            
+            status = await self.get_query_result(job_id)
+            if not status:
+                return False
+            
+            job_status = status.get('status')
+            if job_status == 'completed':
+                return await self.download_membrane_result(job_id, output_path)
+            elif job_status in ['failed', 'error']:
+                print(f"Membrane system processing failed: {status.get('error', 'Unknown error')}")
+                return False
+            
+            await asyncio.sleep(poll_interval)
     
     async def get_query_result(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Get result of membrane system query."""
