@@ -8,7 +8,7 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-from src.api.models import ProteinStructure, MembraneConfig, MembraneType, ProteinTopologyMembrane, PdbFileOptionRequest
+from src.api.models import ProteinStructure, MembraneConfig, MembraneType, ProteinTopologyMembrane, PdbFileOptionRequest, IonConfiguration, IonType
 from src.api.validators import MembraneConfigValidator
 
 PROTEIN_STRUCTURE_FIELD_NAME = "fileInputMode"
@@ -86,6 +86,10 @@ class OprlmSeleniumClient:
         
         # Fill water_thickness_z (Water thickness along Z)
         self.__fill_text_field(By.NAME, "wdist", str(pdb_file_request.water_thickness_z))
+        
+        # Fill ion concentration and type
+        self.__fill_text_field(By.NAME, "ion_conc", str(pdb_file_request.ion_configuration.ion_concentration))
+        self.__select_dropdown_value("ion_type", pdb_file_request.ion_configuration.ion_type.value)
 
         # Fill email and submit job
         self.__fill_text_field(By.ID, "userEmail", pdb_file_request.email or "abobus@gmail.com")
@@ -225,6 +229,10 @@ if __name__ == "__main__":
         .email("abobus@gmail.com") \
         .input_protein_size_plus(19) \
         .water_thickness_z(25.0) \
+        .ion_configuration(IonConfiguration.builder()
+                          .ion_concentration(0.15)
+                          .ion_type(IonType.NaCl)
+                          .build()) \
         .build()
     
     oprlm_client = OprlmSeleniumClient()

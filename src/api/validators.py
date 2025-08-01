@@ -1,4 +1,4 @@
-from src.api.models import MembraneConfig, ProteinStructure, MembraneType, ProteinTopologyMembrane
+from src.api.models import MembraneConfig, ProteinStructure, MembraneType, ProteinTopologyMembrane, IonConfiguration, IonType
 
 
 class MembraneConfigValidator:
@@ -103,3 +103,22 @@ class PdbFileOptionRequestValidator:
             raise TypeError(f"water_thickness_z must be a number, got {type(request.water_thickness_z)}")
         if not (1.0 <= request.water_thickness_z <= 100.0):
             raise ValueError(f"water_thickness_z must be between 1.0 and 100.0, got {request.water_thickness_z}")
+        
+        if request.ion_configuration is None:
+            raise ValueError("ion_configuration cannot be None")
+        if not isinstance(request.ion_configuration, IonConfiguration):
+            raise TypeError(f"ion_configuration must be an IonConfiguration, got {type(request.ion_configuration)}")
+        
+        # Validate ion concentration
+        if request.ion_configuration.ion_concentration is None:
+            raise ValueError("ion_concentration cannot be None")
+        if not isinstance(request.ion_configuration.ion_concentration, (int, float)):
+            raise TypeError(f"ion_concentration must be a number, got {type(request.ion_configuration.ion_concentration)}")
+        if not (0.0 <= request.ion_configuration.ion_concentration <= 5.0):
+            raise ValueError(f"ion_concentration must be between 0.0 and 5.0, got {request.ion_configuration.ion_concentration}")
+        
+        # Validate ion type
+        if request.ion_configuration.ion_type is None:
+            raise ValueError("ion_type cannot be None")
+        if not isinstance(request.ion_configuration.ion_type, IonType):
+            raise TypeError(f"ion_type must be an IonType enum, got {type(request.ion_configuration.ion_type)}")

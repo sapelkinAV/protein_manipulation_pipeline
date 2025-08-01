@@ -38,6 +38,43 @@ class ProteinTopologyMembrane(Enum):
     OUT = "out"
 
 
+class IonType(Enum):
+    KCl = "KCl"
+    NaCl = "NaCl"
+    CaCl2 = "CaCl2"
+    MgCl2 = "MgCl2"
+
+
+class IonConfiguration:
+    def __init__(self, ion_concentration: float = 0.15, ion_type: IonType = IonType.KCl):
+        self.ion_concentration = ion_concentration
+        self.ion_type = ion_type
+
+    @staticmethod
+    def builder():
+        return IonConfigurationBuilder()
+
+
+class IonConfigurationBuilder:
+    def __init__(self):
+        self._ion_concentration = 0.15
+        self._ion_type = IonType.KCl
+
+    def ion_concentration(self, concentration: float):
+        self._ion_concentration = concentration
+        return self
+
+    def ion_type(self, ion_type: IonType):
+        self._ion_type = ion_type
+        return self
+
+    def build(self) -> IonConfiguration:
+        return IonConfiguration(
+            ion_concentration=self._ion_concentration,
+            ion_type=self._ion_type
+        )
+
+
 class MembraneConfig:
     def __init__(self,
                  membrane_type: MembraneType = MembraneType.CUSTOM,
@@ -74,6 +111,7 @@ class PdbFileOptionRequest:
                  membrane_config: MembraneConfig = None,
                  input_protein_size_plus: int = 20,
                  water_thickness_z: float = 22.5,
+                 ion_configuration: IonConfiguration = None,
                  ):
         self.pdb_id = pdb_id
         self.file_input_mode = file_input_mode
@@ -83,6 +121,7 @@ class PdbFileOptionRequest:
         self.membrane_config = membrane_config or MembraneConfig()
         self.input_protein_size_plus = input_protein_size_plus
         self.water_thickness_z = water_thickness_z
+        self.ion_configuration = ion_configuration or IonConfiguration()
 
     @staticmethod
     def builder():
@@ -153,6 +192,8 @@ class PdbFileOptionRequestBuilder:
         self._email = None
         self._membrane_config = None
         self._input_protein_size_plus = 20
+        self._water_thickness_z = 22.5
+        self._ion_configuration = None
 
     def pdb_id(self, pdb_id: str):
         self._pdb_id = pdb_id
@@ -182,6 +223,10 @@ class PdbFileOptionRequestBuilder:
         self._water_thickness_z = water_thickness_z
         return self
 
+    def ion_configuration(self, ion_configuration: IonConfiguration):
+        self._ion_configuration = ion_configuration
+        return self
+
     def build(self) -> PdbFileOptionRequest:
         if self._pdb_id is None:
             raise ValueError("pdb_id is required")
@@ -194,5 +239,6 @@ class PdbFileOptionRequestBuilder:
             email=self._email,
             membrane_config=self._membrane_config,
             input_protein_size_plus=self._input_protein_size_plus,
-            water_thickness_z=self._water_thickness_z
+            water_thickness_z=self._water_thickness_z,
+            ion_configuration=self._ion_configuration
         )
