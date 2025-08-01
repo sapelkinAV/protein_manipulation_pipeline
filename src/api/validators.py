@@ -122,3 +122,11 @@ class PdbFileOptionRequestValidator:
             raise ValueError("ion_type cannot be None")
         if not isinstance(request.ion_configuration.ion_type, IonType):
             raise TypeError(f"ion_type must be an IonType enum, got {type(request.ion_configuration.ion_type)}")
+        
+        # Validate temperature
+        if request.temperature is None:
+            raise ValueError("temperature cannot be None")
+        if not isinstance(request.temperature, (int, float)):
+            raise TypeError(f"temperature must be a number, got {type(request.temperature)}")
+        if not (100.0 <= request.temperature <= 400.0):
+            raise ValueError(f"temperature must be between 100.0 and 400.0 K, got {request.temperature}")

@@ -90,6 +90,9 @@ class OprlmSeleniumClient:
         # Fill ion concentration and type
         self.__fill_text_field(By.NAME, "ion_conc", str(pdb_file_request.ion_configuration.ion_concentration))
         self.__select_dropdown_value("ion_type", pdb_file_request.ion_configuration.ion_type.value)
+        
+        # Fill temperature
+        self.__fill_text_field(By.NAME, "temperature", str(pdb_file_request.temperature))
 
         # Fill email and submit job
         self.__fill_text_field(By.ID, "userEmail", pdb_file_request.email or "abobus@gmail.com")
@@ -233,6 +236,7 @@ if __name__ == "__main__":
                           .ion_concentration(0.15)
                           .ion_type(IonType.NaCl)
                           .build()) \
+        .temperature(310.0) \
         .build()
     
     oprlm_client = OprlmSeleniumClient()

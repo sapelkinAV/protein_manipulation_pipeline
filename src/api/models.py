@@ -112,6 +112,7 @@ class PdbFileOptionRequest:
                  input_protein_size_plus: int = 20,
                  water_thickness_z: float = 22.5,
                  ion_configuration: IonConfiguration = None,
+                 temperature: float = 303.15,
                  ):
         self.pdb_id = pdb_id
         self.file_input_mode = file_input_mode
@@ -122,6 +123,7 @@ class PdbFileOptionRequest:
         self.input_protein_size_plus = input_protein_size_plus
         self.water_thickness_z = water_thickness_z
         self.ion_configuration = ion_configuration or IonConfiguration()
+        self.temperature = temperature
 
     @staticmethod
     def builder():
@@ -194,6 +196,7 @@ class PdbFileOptionRequestBuilder:
         self._input_protein_size_plus = 20
         self._water_thickness_z = 22.5
         self._ion_configuration = None
+        self._temperature = 303.15
 
     def pdb_id(self, pdb_id: str):
         self._pdb_id = pdb_id
@@ -227,6 +230,10 @@ class PdbFileOptionRequestBuilder:
         self._ion_configuration = ion_configuration
         return self
 
+    def temperature(self, temperature: float):
+        self._temperature = temperature
+        return self
+
     def build(self) -> PdbFileOptionRequest:
         if self._pdb_id is None:
             raise ValueError("pdb_id is required")
@@ -240,5 +247,6 @@ class PdbFileOptionRequestBuilder:
             membrane_config=self._membrane_config,
             input_protein_size_plus=self._input_protein_size_plus,
             water_thickness_z=self._water_thickness_z,
-            ion_configuration=self._ion_configuration
+            ion_configuration=self._ion_configuration,
+            temperature=self._temperature
         )
