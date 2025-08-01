@@ -130,3 +130,9 @@ class PdbFileOptionRequestValidator:
             raise TypeError(f"temperature must be a number, got {type(request.temperature)}")
         if not (100.0 <= request.temperature <= 400.0):
             raise ValueError(f"temperature must be between 100.0 and 400.0 K, got {request.temperature}")
+        
+        # Validate minimization
+        if request.perform_charmm_minimization is None:
+            raise ValueError("perform_charmm_minimization cannot be None")
+        if not isinstance(request.perform_charmm_minimization, bool):
+            raise TypeError(f"perform_charmm_minimization must be a boolean, got {type(request.perform_charmm_minimization)}")

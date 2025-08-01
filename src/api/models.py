@@ -113,6 +113,7 @@ class PdbFileOptionRequest:
                  water_thickness_z: float = 22.5,
                  ion_configuration: IonConfiguration = None,
                  temperature: float = 303.15,
+                 perform_charmm_minimization: bool = True,
                  ):
         self.pdb_id = pdb_id
         self.file_input_mode = file_input_mode
@@ -124,6 +125,7 @@ class PdbFileOptionRequest:
         self.water_thickness_z = water_thickness_z
         self.ion_configuration = ion_configuration or IonConfiguration()
         self.temperature = temperature
+        self.perform_charmm_minimization = perform_charmm_minimization
 
     @staticmethod
     def builder():
@@ -234,6 +236,10 @@ class PdbFileOptionRequestBuilder:
         self._temperature = temperature
         return self
 
+    def perform_charmm_minimization(self, perform_minimization: bool):
+        self._perform_charmm_minimization = perform_minimization
+        return self
+
     def build(self) -> PdbFileOptionRequest:
         if self._pdb_id is None:
             raise ValueError("pdb_id is required")
@@ -248,5 +254,6 @@ class PdbFileOptionRequestBuilder:
             input_protein_size_plus=self._input_protein_size_plus,
             water_thickness_z=self._water_thickness_z,
             ion_configuration=self._ion_configuration,
-            temperature=self._temperature
+            temperature=self._temperature,
+            perform_charmm_minimization=self._perform_charmm_minimization
         )

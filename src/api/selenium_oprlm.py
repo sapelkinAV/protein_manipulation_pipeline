@@ -93,6 +93,10 @@ class OprlmSeleniumClient:
         
         # Fill temperature
         self.__fill_text_field(By.NAME, "temperature", str(pdb_file_request.temperature))
+        
+        # Fill minimization (select True/False for CHARMM minimization)
+        minimization_value = "1" if pdb_file_request.perform_charmm_minimization else "0"
+        self.__select_dropdown_value("charmm_mini", minimization_value)
 
         # Fill email and submit job
         self.__fill_text_field(By.ID, "userEmail", pdb_file_request.email or "abobus@gmail.com")
@@ -237,6 +241,7 @@ if __name__ == "__main__":
                           .ion_type(IonType.NaCl)
                           .build()) \
         .temperature(310.0) \
+        .perform_charmm_minimization(False) \
         .build()
     
     oprlm_client = OprlmSeleniumClient()
