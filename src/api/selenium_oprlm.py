@@ -82,7 +82,7 @@ class OprlmSeleniumClient:
         self.__fill_membrane_config(pdb_file_request.file_input_mode, pdb_file_request.membrane_config)
 
         # Fill nlayer (Box Margin Å)
-        self.__fill_text_field(By.NAME, "nlayer", str(pdb_file_request.nlayer))
+        self.__fill_text_field(By.NAME, "nlayer", str(pdb_file_request.input_protein_size_plus))
 
         # Fill email and submit job
         self.__fill_text_field(By.ID, "userEmail", pdb_file_request.email or "abobus@gmail.com")
@@ -220,7 +220,7 @@ if __name__ == "__main__":
         .file_input_mode(ProteinStructure.OPRLM) \
         .membrane_config(membrane_config) \
         .email("abobus@gmail.com") \
-        .nlayer(19) \
+        .input_protein_size_plus(19) \
         .build()
     
     oprlm_client = OprlmSeleniumClient()

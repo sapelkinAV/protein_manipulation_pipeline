@@ -72,7 +72,7 @@ class PdbFileOptionRequest:
                  file_path: Path = None,
                  email: str = None,
                  membrane_config: MembraneConfig = None,
-                 nlayer: int = 20,
+                 input_protein_size_plus: int = 20,
                  ):
         self.pdb_id = pdb_id
         self.file_input_mode = file_input_mode
@@ -80,7 +80,7 @@ class PdbFileOptionRequest:
         self.output_dir = Path(f"/Users/sapelkinav/code/python/oprlm/data/pdb/step1_output/{pdb_id}")
         self.email = email
         self.membrane_config = membrane_config or MembraneConfig()
-        self.nlayer = nlayer
+        self.input_protein_size_plus = input_protein_size_plus
 
     @staticmethod
     def builder():
@@ -150,7 +150,7 @@ class PdbFileOptionRequestBuilder:
         self._file_path = None
         self._email = None
         self._membrane_config = None
-        self._nlayer = 20
+        self._input_protein_size_plus = 20
 
     def pdb_id(self, pdb_id: str):
         self._pdb_id = pdb_id
@@ -172,8 +172,8 @@ class PdbFileOptionRequestBuilder:
         self._membrane_config = config
         return self
 
-    def nlayer(self, nlayer: int):
-        self._nlayer = nlayer
+    def input_protein_size_plus(self, input_protein_size_plus: int):
+        self._input_protein_size_plus = input_protein_size_plus
         return self
 
     def build(self) -> PdbFileOptionRequest:
@@ -187,5 +187,5 @@ class PdbFileOptionRequestBuilder:
             file_path=self._file_path,
             email=self._email,
             membrane_config=self._membrane_config,
-            nlayer=self._nlayer
+            input_protein_size_plus=self._input_protein_size_plus
         )
