@@ -1,4 +1,3 @@
-from enum import Enum
 from pathlib import Path
 
 from selenium import webdriver
@@ -9,75 +8,11 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
+from src.api.models import ProteinStructure, MembraneConfig, MembraneType, ProteinTopologyMembrane, PdbFileOptionRequest
+from src.api.validators import MembraneConfigValidator
+
 PROTEIN_STRUCTURE_FIELD_NAME = "fileInputMode"
 MEMBRANE_TYPE_FIELD_NAME = "membraneType"
-
-class ProteinStructure(Enum):
-    RCSB = "searchPDB"  # RCSB
-    OPRLM = "searchOPM"  # OPRLM
-    CUSTOM = "upload"  # CUSTOM
-
-class MembraneType(Enum):
-    CUSTOM = "custom"  # Simple model membrane
-    PM_MAMMALIAN = "PMm"  # Plasma membrane (mammalian)
-    PM_PLANTS = "PMp"  # Plasma membrane (plants)
-    PM_FUNGI = "PMf"  # Plasma membrane (Fungi)
-    ER_FUNGI = "ERf"  # ER (fungi)
-    ER_MAMMALIAN = "ERm"  # ER (mammalian)
-    GOLGI_MAMMALIAN = "GOLm"  # Golgi membrane (mammalian)
-    GOLGI_FUNGI = "GOLf"  # Golgi membrane (fungi)
-    ENDOSOME_MAMMALIAN = "ENDm"  # Endosome membrane (mammalian)
-    LYSOSOME_MAMMALIAN = "LYSm"  # Lysosome membrane (mammalian)
-    OUTER_MITOCHONDRIAL = "MOM"  # Outer mitochondrial membrane
-    INNER_MITOCHONDRIAL = "MIM"  # Inner mitochondrial membrane
-    VACUOLE = "VAC" # Vacuole membrane
-    THYLACOID_PLANTS = "TPp" # Thylakoid membrane (plants)
-    THYLACOID_BACTERIA = "TPb" # Thylakoid membrane (bacteria)
-    ARCHEBACTERIA = "aPM" # Archaebacteria cell membrane
-    GRAM_NEGATIVE_BACTERIA_OUTER_MEMBRANE = "G-OM" # Gram-negative bacteria outer membrane
-    GRAM_NEGATIVE_BACTERIA_INNER_MEMBRANE = "G-IM" # Gram-negative bacteria inner membrane
-    GRAM_POSITIVE_BACTERIA_MEMBRANE = "G-IM" # Gram-positive bacteria membrane
-
-class ProteinTopologyMembrane(Enum):
-    IN = "in"
-    OUT = "out"
-
-class MembraneConfig:
-    def __init__(self,
-                 membrane_type: MembraneType = MembraneType.CUSTOM,
-                 # OPRLM FOR SIMPLE MEMBRANE
-                 popc: bool = True,
-                 dopc: bool = False,
-                 dspc: bool = False,
-                 dmpc: bool = False,
-                 dppc: bool = False,
-                 chol_value: float = 20.0,
-                 # RCSB AND UPLOAD
-                 protein_topology: ProteinTopologyMembrane = ProteinTopologyMembrane.IN
-                 ):
-        self.membrane_type = membrane_type
-        self.popc = popc
-        self.dopc = dopc
-        self.dspc = dspc
-        self.dmpc = dmpc
-        self.dppc = dppc
-        self.chol_value = chol_value
-        self.protein_topology = protein_topology
-
-class PdbFileOptionRequest:
-    def __init__(self,
-                 pdb_id: str,
-                 file_input_mode: ProteinStructure,
-                 file_path: Path = None,
-                 email: str = None,
-                 membrane_config: MembraneConfig = None,
-                 ):
-        self.pdb_id = pdb_id
-        self.file_input_mode = file_input_mode
-        self.file_path = file_path
-        self.output_dir = Path(f"/Users/sapelkinav/code/python/oprlm/data/pdb/step1_output/{pdb_id}")
-        self.email = email
-        self.membrane_config = membrane_config or MembraneConfig()
 
 class OprlmSeleniumClient:
 
@@ -106,9 +41,7 @@ class OprlmSeleniumClient:
         self.__select_protein_structure(pdb_file_request.file_input_mode)
 
         if pdb_file_request.file_input_mode == ProteinStructure.RCSB or pdb_file_request.file_input_mode == ProteinStructure.OPRLM:
-            search_box = self.driver.find_element(By.ID, "search-box")
-            search_box.clear()
-            search_box.send_keys(pdb_file_request.pdb_id)
+            self.__fill_search_field("search-box", pdb_file_request.pdb_id)
             # Click the search button specifically within the api-search div
             search_button = self.driver.find_element(By.CSS_SELECTOR,
                                               "div.api-search span.submit-button")
@@ -146,21 +79,10 @@ class OprlmSeleniumClient:
         # Fill membrane configuration based on MembraneConfig
 
         # Fill composition checkboxes
-        if pdb_file_request.membrane_config is not None:
-            self.__set_checkbox_value("popc", pdb_file_request.membrane_config.popc)
-            self.__set_checkbox_value("dopc", pdb_file_request.membrane_config.dopc)
-            self.__set_checkbox_value("dspc", pdb_file_request.membrane_config.dspc)
-            self.__set_checkbox_value("dmpc", pdb_file_request.membrane_config.dmpc)
-            self.__set_checkbox_value("dppc", pdb_file_request.membrane_config.dppc)
-
-            custom_chol = self.driver.find_element(By.NAME, "customChol")
-            custom_chol.clear()
-            custom_chol.send_keys(str(pdb_file_request.membrane_config.chol_value))
+        self.__fill_membrane_config(pdb_file_request.file_input_mode, pdb_file_request.membrane_config)
 
         # Fill email and submit job
-        email_box = self.driver.find_element(By.ID, "userEmail")
-        email_box.clear()
-        email_box.send_keys(pdb_file_request.email or "abobus@gmail.com")
+        self.__fill_text_field(By.ID, "userEmail", pdb_file_request.email or "abobus@gmail.com")
         
         submit_button = self.driver.find_element(By.ID, "submit")
         submit_button.click()
@@ -226,25 +148,28 @@ class OprlmSeleniumClient:
         self.__select_dropdown_value(PROTEIN_STRUCTURE_FIELD_NAME, prot_structure.value)
 
     def __fill_membrane_config(self, protein_structure: ProteinStructure, membrane_config: MembraneConfig):
+        # Validate inputs using centralized validator
+        MembraneConfigValidator.validate_inputs(protein_structure, membrane_config)
+        
+        # Select membrane type
         self.__select_dropdown_value(MEMBRANE_TYPE_FIELD_NAME, membrane_config.membrane_type.value)
 
         # FOR OPRLM AND RCSB Simple membrane type
-        if ((protein_structure == ProteinStructure.OPRLM or ProteinStructure.RCSB)
-                and membrane_config.membrane_type == MembraneType.CUSTOM):
+        if (protein_structure in [ProteinStructure.OPRLM, ProteinStructure.RCSB] and 
+                membrane_config.membrane_type == MembraneType.CUSTOM):
             self.__set_checkbox_value("popc", membrane_config.popc)
             self.__set_checkbox_value("dopc", membrane_config.dopc)
             self.__set_checkbox_value("dspc", membrane_config.dspc)
             self.__set_checkbox_value("dmpc", membrane_config.dmpc)
             self.__set_checkbox_value("dppc", membrane_config.dppc)
 
-            custom_chol = self.driver.find_element(By.NAME, "customChol")
-            custom_chol.clear()
-            custom_chol.send_keys(str(membrane_config.chol_value))
-            return
+            self.__fill_text_field(By.NAME, "customChol", str(membrane_config.chol_value))
 
-        # FOR EVERYTHING ELSE
-        if membrane_config is not None:
+        # Fill Protein Topology in Membrane
+        if protein_structure in [ProteinStructure.CUSTOM, ProteinStructure.RCSB]:
             self.__set_protein_topology_radio_button(membrane_config.protein_topology)
+
+
 
     def __set_protein_topology_radio_button(self, protein_topology: ProteinTopologyMembrane):
         radio_button = self.driver.find_element(By.ID, f"ppm_topology_{protein_topology.value}")
@@ -264,12 +189,30 @@ class OprlmSeleniumClient:
         dropdown = Select(dropdown_element)
         dropdown.select_by_value(dropdown_value)
 
+    def __fill_text_field(self, by, selector: str, text: str):
+        """Utility method to fill text fields with clear and send_keys"""
+        element = self.driver.find_element(by, selector)
+        element.clear()
+        element.send_keys(str(text))
+
+    def __fill_search_field(self, selector: str, search_text: str):
+        """Specialized for search fields"""
+        self.__fill_text_field(By.ID, selector, search_text)
+
 
 if __name__ == "__main__":
     file_request = PdbFileOptionRequest(
         pdb_id="3c02",
         file_input_mode=ProteinStructure.OPRLM,
-        membrane_config=MembraneConfig(True, True, True, True, True, 30.0),
+        membrane_config=MembraneConfig(
+            membrane_type=MembraneType.CUSTOM,
+            popc=True, 
+            dopc=True, 
+            dspc=True, 
+            dmpc=True, 
+            dppc=True, 
+            chol_value=30.0
+        ),
     )
     oprlm_client = OprlmSeleniumClient()
     oprlm_client.init_selenium_oprlm_session(headless=False)  # Set to False for interactive mode
