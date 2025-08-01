@@ -89,3 +89,10 @@ class PdbFileOptionRequestValidator:
         
         if request.membrane_config is not None:
             MembraneConfigValidator.validate_membrane_config(request.membrane_config)
+        
+        if request.nlayer is None:
+            raise ValueError("nlayer cannot be None")
+        if not isinstance(request.nlayer, int):
+            raise TypeError(f"nlayer must be an integer, got {type(request.nlayer)}")
+        if not (1 <= request.nlayer <= 100):
+            raise ValueError(f"nlayer must be between 1 and 100, got {request.nlayer}")
