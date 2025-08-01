@@ -90,9 +90,16 @@ class PdbFileOptionRequestValidator:
         if request.membrane_config is not None:
             MembraneConfigValidator.validate_membrane_config(request.membrane_config)
         
-        if request.nlayer is None:
-            raise ValueError("nlayer cannot be None")
-        if not isinstance(request.nlayer, int):
-            raise TypeError(f"nlayer must be an integer, got {type(request.nlayer)}")
-        if not (1 <= request.nlayer <= 100):
-            raise ValueError(f"nlayer must be between 1 and 100, got {request.nlayer}")
+        if request.input_protein_size_plus is None:
+            raise ValueError("input_protein_size_plus cannot be None")
+        if not isinstance(request.input_protein_size_plus, int):
+            raise TypeError(f"input_protein_size_plus must be an integer, got {type(request.input_protein_size_plus)}")
+        if not (1 <= request.input_protein_size_plus <= 100):
+            raise ValueError(f"input_protein_size_plus must be between 1 and 100, got {request.input_protein_size_plus}")
+        
+        if request.water_thickness_z is None:
+            raise ValueError("water_thickness_z cannot be None")
+        if not isinstance(request.water_thickness_z, (int, float)):
+            raise TypeError(f"water_thickness_z must be a number, got {type(request.water_thickness_z)}")
+        if not (1.0 <= request.water_thickness_z <= 100.0):
+            raise ValueError(f"water_thickness_z must be between 1.0 and 100.0, got {request.water_thickness_z}")
