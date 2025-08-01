@@ -60,6 +60,10 @@ class MembraneConfig:
         self.chol_value = chol_value
         self.protein_topology = protein_topology
 
+    @staticmethod
+    def builder():
+        return MembraneConfigBuilder()
+
 
 class PdbFileOptionRequest:
     def __init__(self,
@@ -75,3 +79,105 @@ class PdbFileOptionRequest:
         self.output_dir = Path(f"/Users/sapelkinav/code/python/oprlm/data/pdb/step1_output/{pdb_id}")
         self.email = email
         self.membrane_config = membrane_config or MembraneConfig()
+
+    @staticmethod
+    def builder():
+        return PdbFileOptionRequestBuilder()
+
+
+class MembraneConfigBuilder:
+    def __init__(self):
+        self._membrane_type = MembraneType.CUSTOM
+        self._popc = True
+        self._dopc = False
+        self._dspc = False
+        self._dmpc = False
+        self._dppc = False
+        self._chol_value = 20.0
+        self._protein_topology = ProteinTopologyMembrane.IN
+
+    def membrane_type(self, membrane_type: MembraneType):
+        self._membrane_type = membrane_type
+        return self
+
+    def popc(self, value: bool):
+        self._popc = value
+        return self
+
+    def dopc(self, value: bool):
+        self._dopc = value
+        return self
+
+    def dspc(self, value: bool):
+        self._dspc = value
+        return self
+
+    def dmpc(self, value: bool):
+        self._dmpc = value
+        return self
+
+    def dppc(self, value: bool):
+        self._dppc = value
+        return self
+
+    def chol_value(self, value: float):
+        self._chol_value = value
+        return self
+
+    def protein_topology(self, topology: ProteinTopologyMembrane):
+        self._protein_topology = topology
+        return self
+
+    def build(self) -> MembraneConfig:
+        return MembraneConfig(
+            membrane_type=self._membrane_type,
+            popc=self._popc,
+            dopc=self._dopc,
+            dspc=self._dspc,
+            dmpc=self._dmpc,
+            dppc=self._dppc,
+            chol_value=self._chol_value,
+            protein_topology=self._protein_topology
+        )
+
+
+class PdbFileOptionRequestBuilder:
+    def __init__(self):
+        self._pdb_id = None
+        self._file_input_mode = None
+        self._file_path = None
+        self._email = None
+        self._membrane_config = None
+
+    def pdb_id(self, pdb_id: str):
+        self._pdb_id = pdb_id
+        return self
+
+    def file_input_mode(self, mode: ProteinStructure):
+        self._file_input_mode = mode
+        return self
+
+    def file_path(self, path: Path):
+        self._file_path = path
+        return self
+
+    def email(self, email: str):
+        self._email = email
+        return self
+
+    def membrane_config(self, config: MembraneConfig):
+        self._membrane_config = config
+        return self
+
+    def build(self) -> PdbFileOptionRequest:
+        if self._pdb_id is None:
+            raise ValueError("pdb_id is required")
+        if self._file_input_mode is None:
+            raise ValueError("file_input_mode is required")
+        return PdbFileOptionRequest(
+            pdb_id=self._pdb_id,
+            file_input_mode=self._file_input_mode,
+            file_path=self._file_path,
+            email=self._email,
+            membrane_config=self._membrane_config
+        )

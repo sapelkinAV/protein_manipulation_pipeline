@@ -201,19 +201,24 @@ class OprlmSeleniumClient:
 
 
 if __name__ == "__main__":
-    file_request = PdbFileOptionRequest(
-        pdb_id="3c02",
-        file_input_mode=ProteinStructure.OPRLM,
-        membrane_config=MembraneConfig(
-            membrane_type=MembraneType.CUSTOM,
-            popc=True, 
-            dopc=True, 
-            dspc=True, 
-            dmpc=True, 
-            dppc=True, 
-            chol_value=30.0
-        ),
-    )
+    # Using builders for more readable and flexible object creation
+    membrane_config = MembraneConfig.builder() \
+        .membrane_type(MembraneType.CUSTOM) \
+        .popc(True) \
+        .dopc(True) \
+        .dspc(True) \
+        .dmpc(True) \
+        .dppc(True) \
+        .chol_value(30.0) \
+        .build()
+    
+    file_request = PdbFileOptionRequest.builder() \
+        .pdb_id("3c02") \
+        .file_input_mode(ProteinStructure.OPRLM) \
+        .membrane_config(membrane_config) \
+        .email("abobus@gmail.com") \
+        .build()
+    
     oprlm_client = OprlmSeleniumClient()
     oprlm_client.init_selenium_oprlm_session(headless=False)  # Set to False for interactive mode
     oprlm_client.search_membrane_protein(file_request)
