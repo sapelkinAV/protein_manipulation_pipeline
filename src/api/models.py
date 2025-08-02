@@ -75,6 +75,46 @@ class IonConfigurationBuilder:
         )
 
 
+class MDInputOptions:
+    def __init__(self, 
+                 namd_enabled: bool = False,
+                 gromacs_enabled: bool = True,
+                 openmm_enabled: bool = True):
+        self.namd_enabled = namd_enabled
+        self.gromacs_enabled = gromacs_enabled
+        self.openmm_enabled = openmm_enabled
+
+    @staticmethod
+    def builder():
+        return MDInputOptionsBuilder()
+
+
+class MDInputOptionsBuilder:
+    def __init__(self):
+        self._namd_enabled = False
+        self._gromacs_enabled = True
+        self._openmm_enabled = True
+
+    def namd_enabled(self, enabled: bool):
+        self._namd_enabled = enabled
+        return self
+
+    def gromacs_enabled(self, enabled: bool):
+        self._gromacs_enabled = enabled
+        return self
+
+    def openmm_enabled(self, enabled: bool):
+        self._openmm_enabled = enabled
+        return self
+
+    def build(self) -> MDInputOptions:
+        return MDInputOptions(
+            namd_enabled=self._namd_enabled,
+            gromacs_enabled=self._gromacs_enabled,
+            openmm_enabled=self._openmm_enabled
+        )
+
+
 class MembraneConfig:
     def __init__(self,
                  membrane_type: MembraneType = MembraneType.CUSTOM,
@@ -114,6 +154,7 @@ class PdbFileOptionRequest:
                  ion_configuration: IonConfiguration = None,
                  temperature: float = 303.15,
                  perform_charmm_minimization: bool = True,
+                 md_input_options: MDInputOptions = None,
                  ):
         self.pdb_id = pdb_id
         self.file_input_mode = file_input_mode
@@ -126,6 +167,7 @@ class PdbFileOptionRequest:
         self.ion_configuration = ion_configuration or IonConfiguration()
         self.temperature = temperature
         self.perform_charmm_minimization = perform_charmm_minimization
+        self.md_input_options = md_input_options or MDInputOptions()
 
     @staticmethod
     def builder():
@@ -199,6 +241,8 @@ class PdbFileOptionRequestBuilder:
         self._water_thickness_z = 22.5
         self._ion_configuration = None
         self._temperature = 303.15
+        self._perform_charmm_minimization = True
+        self._md_input_options = None
 
     def pdb_id(self, pdb_id: str):
         self._pdb_id = pdb_id
@@ -240,6 +284,10 @@ class PdbFileOptionRequestBuilder:
         self._perform_charmm_minimization = perform_minimization
         return self
 
+    def md_input_options(self, md_input_options: MDInputOptions):
+        self._md_input_options = md_input_options
+        return self
+
     def build(self) -> PdbFileOptionRequest:
         if self._pdb_id is None:
             raise ValueError("pdb_id is required")
@@ -255,5 +303,6 @@ class PdbFileOptionRequestBuilder:
             water_thickness_z=self._water_thickness_z,
             ion_configuration=self._ion_configuration,
             temperature=self._temperature,
-            perform_charmm_minimization=self._perform_charmm_minimization
+            perform_charmm_minimization=self._perform_charmm_minimization,
+            md_input_options=self._md_input_options
         )

@@ -1,4 +1,4 @@
-from src.api.models import MembraneConfig, ProteinStructure, MembraneType, ProteinTopologyMembrane, IonConfiguration, IonType
+from src.api.models import MembraneConfig, ProteinStructure, MembraneType, ProteinTopologyMembrane, IonConfiguration, IonType, MDInputOptions
 
 
 class MembraneConfigValidator:
@@ -136,3 +136,18 @@ class PdbFileOptionRequestValidator:
             raise ValueError("perform_charmm_minimization cannot be None")
         if not isinstance(request.perform_charmm_minimization, bool):
             raise TypeError(f"perform_charmm_minimization must be a boolean, got {type(request.perform_charmm_minimization)}")
+        
+        # Validate MD input options
+        if request.md_input_options is None:
+            raise ValueError("md_input_options cannot be None")
+        if not isinstance(request.md_input_options, MDInputOptions):
+            raise TypeError(f"md_input_options must be an MDInputOptions, got {type(request.md_input_options)}")
+        
+        # Validate individual MD input option fields
+        md_options = request.md_input_options
+        if not isinstance(md_options.namd_enabled, bool):
+            raise TypeError(f"namd_enabled must be a boolean, got {type(md_options.namd_enabled)}")
+        if not isinstance(md_options.gromacs_enabled, bool):
+            raise TypeError(f"gromacs_enabled must be a boolean, got {type(md_options.gromacs_enabled)}")
+        if not isinstance(md_options.openmm_enabled, bool):
+            raise TypeError(f"openmm_enabled must be a boolean, got {type(md_options.openmm_enabled)}")

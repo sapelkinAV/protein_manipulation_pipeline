@@ -8,7 +8,7 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-from src.api.models import ProteinStructure, MembraneConfig, MembraneType, ProteinTopologyMembrane, PdbFileOptionRequest, IonConfiguration, IonType
+from src.api.models import ProteinStructure, MembraneConfig, MembraneType, ProteinTopologyMembrane, PdbFileOptionRequest, IonConfiguration, IonType, MDInputOptions
 from src.api.validators import MembraneConfigValidator
 
 PROTEIN_STRUCTURE_FIELD_NAME = "fileInputMode"
@@ -97,6 +97,11 @@ class OprlmSeleniumClient:
         # Fill minimization (select True/False for CHARMM minimization)
         minimization_value = "1" if pdb_file_request.perform_charmm_minimization else "0"
         self.__select_dropdown_value("charmm_mini", minimization_value)
+
+        # Fill MD input options (NAMD, GROMACS, OpenMM checkboxes)
+        self.__set_checkbox_value("namd_checked", pdb_file_request.md_input_options.namd_enabled)
+        self.__set_checkbox_value("gmx_checked", pdb_file_request.md_input_options.gromacs_enabled)
+        self.__set_checkbox_value("omm_checked", pdb_file_request.md_input_options.openmm_enabled)
 
         # Fill email and submit job
         self.__fill_text_field(By.ID, "userEmail", pdb_file_request.email or "abobus@gmail.com")
@@ -242,6 +247,11 @@ if __name__ == "__main__":
                           .build()) \
         .temperature(310.0) \
         .perform_charmm_minimization(False) \
+        .md_input_options(MDInputOptions.builder()
+                          .namd_enabled(True)
+                          .gromacs_enabled(False)
+                          .openmm_enabled(False)
+                          .build()) \
         .build()
     
     oprlm_client = OprlmSeleniumClient()
