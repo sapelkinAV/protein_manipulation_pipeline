@@ -24,9 +24,22 @@ class OprlmSeleniumClient:
         if headless:
             chrome_options.add_argument("--headless")
 
-        # Use ChromeDriverManager to automatically manage the ChromeDriver
-        service = Service(ChromeDriverManager().install())
-        self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        try:
+            # Use ChromeDriverManager to automatically manage the ChromeDriver
+            service = Service(ChromeDriverManager().install())
+            self.driver = webdriver.Chrome(service=service, options=chrome_options)
+        except Exception as e:
+            print(f"ChromeDriver initialization failed: {e}")
+            print("Trying alternative ChromeDriver setup...")
+            
+            # Try alternative setup
+            try:
+                from selenium.webdriver.chrome.service import Service as ChromeService
+                service = ChromeService()
+                self.driver = webdriver.Chrome(service=service, options=chrome_options)
+            except Exception as e2:
+                print(f"Alternative setup also failed: {e2}")
+                raise
         
         self.driver.get("https://oprlm.org/oprlm_server")
         
@@ -37,42 +50,43 @@ class OprlmSeleniumClient:
 
 
     def search_membrane_protein(self, pdb_file_request: PdbFileOptionRequest):
-        #Pick
+        # Select the file input mode
         self.__select_protein_structure(pdb_file_request.file_input_mode)
 
         if pdb_file_request.file_input_mode == ProteinStructure.RCSB or pdb_file_request.file_input_mode == ProteinStructure.OPRLM:
             self.__fill_search_field("search-box", pdb_file_request.pdb_id)
             # Click the search button specifically within the api-search div
-            search_button = self.driver.find_element(By.CSS_SELECTOR,
-                                              "div.api-search span.submit-button")
+            search_button = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "div.api-search span.submit-button"))
+            )
             search_button.click()
             
             # Wait for search results to load
-            # Wait for either the chain-table to appear (success) or error message
-            try:
-                WebDriverWait(self.driver, 30).until(
-                    lambda driver: (
-                        len(driver.find_elements(By.ID, "chain-table")) > 0 or
-                        len(driver.find_elements(By.XPATH, "//*[contains(text(), 'PDB entry was not found') or contains(text(), 'not found')]")) > 0
-                    )
+            # Use universal indicators like chain table or NGL viewer
+            WebDriverWait(self.driver, 30).until(
+                EC.any_of(
+                    EC.presence_of_element_located((By.ID, "chain-table")),
+                    EC.presence_of_element_located((By.CSS_SELECTOR, ".membrane-wide canvas")),
+                    EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'NGL Viewer')]"))
                 )
-                
-                # Check if we got results
-                if len(self.driver.find_elements(By.ID, "chain-table")) > 0:
-                    print(f"Search completed successfully for {pdb_file_request.pdb_id}")
-                    # Wait for chains to be visible
-                    WebDriverWait(self.driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "#chain-table input[type='checkbox']"))
-                    )
-                else:
-                    error_text = self.driver.find_element(By.XPATH, "//*[contains(text(), 'PDB entry was not found') or contains(text(), 'not found')]").text
-                    raise Exception(f"Search failed: {error_text}")
-                    
-            except Exception as e:
-                print(f"Search timeout or error for {pdb_file_request.pdb_id}: {e}")
-                raise
-        else:
-            pass
+            )
+            
+            # Check for error messages
+            error_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), 'PDB entry was not found') or contains(text(), 'not found')]")
+            if error_elements:
+                error_text = error_elements[0].text
+                raise Exception(f"Search failed: {error_text}")
+            
+            print(f"✅ Search completed successfully for {pdb_file_request.pdb_id}")
+            # Wait for chains to be visible
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "#chain-table input[type='checkbox']"))
+            )
+            
+        elif pdb_file_request.file_input_mode == ProteinStructure.CUSTOM:
+            if not pdb_file_request.file_path:
+                raise ValueError("file_path is required for CUSTOM file input mode")
+            self.__upload_custom_pdb_file(pdb_file_request.file_path)
 
     def submit_job(self, pdb_file_request: PdbFileOptionRequest):
 
@@ -221,9 +235,90 @@ class OprlmSeleniumClient:
         """Specialized for search fields"""
         self.__fill_text_field(By.ID, selector, search_text)
 
+    def __upload_custom_pdb_file(self, pdb_file_path):
+        """Upload a custom PDB file to OPRLM server"""
+        # Convert to Path object if it's a string
+        if isinstance(pdb_file_path, str):
+            pdb_file_path = Path(pdb_file_path)
+        elif not isinstance(pdb_file_path, Path):
+            raise TypeError(f"pdb_file_path must be a string or Path object, got {type(pdb_file_path)}")
+            
+        if not pdb_file_path.exists():
+            raise FileNotFoundError(f"PDB file not found: {pdb_file_path}")
+        
+        if not pdb_file_path.suffix.lower() in ['.pdb', '.cif']:
+            raise ValueError(f"Unsupported file format: {pdb_file_path.suffix}. Only .pdb and .cif files are supported.")
+        
+        print(f"Uploading file: {pdb_file_path.absolute()}")
+        
+        # Find the file upload input element - wait for it to be visible and enabled
+        file_input = WebDriverWait(self.driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "input[name='pdbFile'][type='file']"))
+        )
+        
+        # Ensure the file input is visible and enabled
+        WebDriverWait(self.driver, 10).until(
+            lambda driver: file_input.is_displayed() and file_input.is_enabled()
+        )
+        
+        # Upload the file using absolute path
+        absolute_path = str(pdb_file_path.absolute())
+        file_input.send_keys(absolute_path)
+        
+        # Wait for file to be processed (button becomes enabled)
+        # Use explicit wait instead of sleep
+        upload_button = WebDriverWait(self.driver, 30).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[text()='Upload PDB File' and not(contains(@class, 'disabled'))]"))
+        )
+        
+        # Scroll to the button and click
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", upload_button)
+        upload_button.click()
+        
+        # Wait for upload completion - look for the chain table or NGL viewer
+        # This is the universal indicator that upload is complete
+        WebDriverWait(self.driver, 120).until(
+            EC.any_of(
+                EC.presence_of_element_located((By.ID, "chain-table")),
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".membrane-wide canvas")),
+                EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'NGL Viewer')]"))
+            )
+        )
+        
+        # Verify upload was successful by checking for chain table
+        from selenium.common import TimeoutException
+        try:
+            chain_table = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.ID, "chain-table"))
+            )
+            
+            # Wait for checkboxes to be available
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "#chain-table input[type='checkbox']"))
+            )
+            
+            print(f"✅ Successfully uploaded custom PDB file: {pdb_file_path.name}")
+            
+        except TimeoutException:
+            # Check for error messages
+            error_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), 'error') or contains(text(), 'failed')]")
+            if error_elements:
+                error_text = error_elements[0].text
+                raise Exception(f"File upload failed: {error_text}")
+            else:
+                raise Exception("File upload completed but no chain table found")
+
 
 if __name__ == "__main__":
-    # Using builders for more readable and flexible object creation
+    # Example for CUSTOM upload - using the test PDB file
+    test_pdb_path = Path("/Users/sapelkinav/code/python/oprlm/tests/2W6V.pdb")
+
+    if not test_pdb_path.exists():
+        print(f"Test PDB file not found: {test_pdb_path}")
+        print("Please ensure tests/2W6V.pdb exists")
+        exit(1)
+    
+    print(f"Using test PDB file: {test_pdb_path}")
     membrane_config = MembraneConfig.builder() \
         .membrane_type(MembraneType.CUSTOM) \
         .popc(True) \
@@ -232,14 +327,16 @@ if __name__ == "__main__":
         .dmpc(True) \
         .dppc(True) \
         .chol_value(30.0) \
+        .protein_topology(topology=ProteinTopologyMembrane.OUT) \
         .build()
     
     file_request = PdbFileOptionRequest.builder() \
-        .pdb_id("3c02") \
-        .file_input_mode(ProteinStructure.OPRLM) \
+        .pdb_id("2W6V_custom") \
+        .file_input_mode(ProteinStructure.CUSTOM) \
+        .file_path(test_pdb_path) \
         .membrane_config(membrane_config) \
         .email("abobus@gmail.com") \
-        .input_protein_size_plus(19) \
+        .input_protein_size_plus(20) \
         .water_thickness_z(25.0) \
         .ion_configuration(IonConfiguration.builder()
                           .ion_concentration(0.15)
@@ -253,9 +350,28 @@ if __name__ == "__main__":
                           .openmm_enabled(False)
                           .build()) \
         .build()
-    
-    oprlm_client = OprlmSeleniumClient()
-    oprlm_client.init_selenium_oprlm_session(headless=False)  # Set to False for interactive mode
-    oprlm_client.search_membrane_protein(file_request)
-    oprlm_client.submit_job(file_request)
+
+    try:
+        oprlm_client = OprlmSeleniumClient()
+        print("Initializing browser session...")
+        oprlm_client.init_selenium_oprlm_session(headless=False)  # Set to True for headless
+        
+        print("Starting custom PDB upload...")
+        oprlm_client.search_membrane_protein(file_request)
+        print("File uploaded successfully!")
+        
+        print("Submitting job...")
+        oprlm_client.submit_job(file_request)
+        print("Job completed!")
+        
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        print("\nTroubleshooting:")
+        print("1. Ensure Chrome is installed")
+        print("2. Try running with headless=True")
+        print("3. Check internet connection")
+        print("4. Use the example script: python examples/custom_upload_example.py")
+    finally:
+        if 'oprlm_client' in locals() and oprlm_client.driver:
+            oprlm_client.driver.quit()
 

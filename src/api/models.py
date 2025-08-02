@@ -158,7 +158,14 @@ class PdbFileOptionRequest:
                  ):
         self.pdb_id = pdb_id
         self.file_input_mode = file_input_mode
-        self.file_path = file_path
+        # Ensure file_path is a Path object if provided
+        if file_path is not None:
+            if isinstance(file_path, str):
+                self.file_path = Path(file_path)
+            else:
+                self.file_path = file_path
+        else:
+            self.file_path = None
         self.output_dir = Path(f"/Users/sapelkinav/code/python/oprlm/data/pdb/step1_output/{pdb_id}")
         self.email = email
         self.membrane_config = membrane_config or MembraneConfig()
@@ -252,8 +259,11 @@ class PdbFileOptionRequestBuilder:
         self._file_input_mode = mode
         return self
 
-    def file_path(self, path: Path):
-        self._file_path = path
+    def file_path(self, path):
+        if isinstance(path, str):
+            self._file_path = Path(path)
+        else:
+            self._file_path = path
         return self
 
     def email(self, email: str):
