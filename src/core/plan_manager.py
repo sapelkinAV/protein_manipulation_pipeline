@@ -1,10 +1,11 @@
 import yaml
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 import uuid
 
 from .models import AnalysisPlan, AnalysisStep, AnalysisStatus, StepStatus
+from .config import StepConfigurationFactory
 
 
 class PlanManager:
@@ -17,8 +18,7 @@ class PlanManager:
     
     def create_plan(self, name: str, description: str, 
                    pdb_id: Optional[str] = None, 
-                   local_pdb_path: Optional[str] = None,
-                   configuration: Optional[Dict] = None) -> AnalysisPlan:
+                   local_pdb_path: Optional[str] = None) -> AnalysisPlan:
         """Create a new analysis plan."""
         plan_id = str(uuid.uuid4())[:8]
         
@@ -28,7 +28,6 @@ class PlanManager:
             description=description,
             pdb_id=pdb_id,
             local_pdb_path=local_pdb_path,
-            configuration=configuration or {}
         )
         
         self._save_plan(plan)
@@ -120,6 +119,84 @@ class PlanManager:
         self._save_plan(plan)
         return True
     
+    def add_pdb_fetch_step(self, plan_id: str, name: str, description: str, 
+                          pdb_config: Dict[str, Any], 
+                          parameters: Optional[Dict] = None) -> bool:
+        """Add a PDB fetch step with configuration."""
+        from .config import PDBFetchConfiguration
+        
+        plan = self.get_plan(plan_id)
+        if not plan:
+            return False
+        
+        config = PDBFetchConfiguration(pdb_config)
+        
+        step = AnalysisStep(
+            name=name,
+            description=description,
+            step_type="pdb_fetch",
+            parameters=parameters or {},
+            configuration=config.to_dict()
+        )
+        
+        return self.add_step(plan_id, step)
+    
+    def add_caver_step(self, plan_id: str, name: str, description: str,
+                      probe_radius: float = 1.4, shell_radius: float = 3.0,
+                      shell_depth: int = 4, clustering_threshold: float = 3.5,
+                      parameters: Optional[Dict] = None) -> bool:
+        """Add a CAVER analysis step with configuration."""
+        from .config import CAVERConfiguration
+        
+        plan = self.get_plan(plan_id)
+        if not plan:
+            return False
+        
+        config = CAVERConfiguration(
+            probe_radius=probe_radius,
+            shell_radius=shell_radius,
+            shell_depth=shell_depth,
+            clustering_threshold=clustering_threshold
+        )
+        
+        step = AnalysisStep(
+            name=name,
+            description=description,
+            step_type="caver",
+            parameters=parameters or {},
+            configuration=config.to_dict()
+        )
+        
+        return self.add_step(plan_id, step)
+    
+    def add_docking_step(self, plan_id: str, name: str, description: str,
+                        grid_size: float = 1.0, exhaustiveness: int = 8,
+                        num_modes: int = 9, energy_range: float = 3.0,
+                        parameters: Optional[Dict] = None) -> bool:
+        """Add a docking analysis step with configuration."""
+        from .config import DockingConfiguration
+        
+        plan = self.get_plan(plan_id)
+        if not plan:
+            return False
+        
+        config = DockingConfiguration(
+            grid_size=grid_size,
+            exhaustiveness=exhaustiveness,
+            num_modes=num_modes,
+            energy_range=energy_range
+        )
+        
+        step = AnalysisStep(
+            name=name,
+            description=description,
+            step_type="docking",
+            parameters=parameters or {},
+            configuration=config.to_dict()
+        )
+        
+        return self.add_step(plan_id, step)
+    
     def delete_plan(self, plan_id: str) -> bool:
         """Delete a plan."""
         plan_file = self.plans_dir / f"{plan_id}.yaml"
@@ -139,7 +216,10 @@ class PlanManager:
         # Ensure enum values are converted to strings
         data['status'] = plan.status.value
         for step in data.get('steps', []):
-            step['status'] = step['status']
+            if hasattr(step['status'], 'value'):
+                step['status'] = step['status'].value
+            else:
+                step['status'] = str(step['status'])
         
         with open(plan_file, 'w') as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)

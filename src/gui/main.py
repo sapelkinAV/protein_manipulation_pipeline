@@ -122,33 +122,43 @@ class NewPlanScreen(Screen):
             self.notify("Plan name is required", severity="error")
             return
         
-        # Basic configuration for now - can be extended with advanced options
-        from api.models import PdbFileOptionRequest, ProteinStructure, MembraneConfig
-        
-        # Create default configuration based on provided PDB info
-        if pdb_id:
-            config = PdbFileOptionRequest(
-                pdb_id=pdb_id,
-                file_input_mode=ProteinStructure.RCSB,
-                membrane_config=MembraneConfig()  # Default config
-            ).to_dict()
-        elif local_pdb:
-            config = PdbFileOptionRequest(
-                pdb_id=name,  # Use plan name as identifier
-                file_input_mode=ProteinStructure.CUSTOM,
-                file_path=local_pdb,
-                membrane_config=MembraneConfig()  # Default config
-            ).to_dict()
-        else:
-            config = {}
-        
         plan = self.plan_manager.create_plan(
             name=name,
             description=description,
             pdb_id=pdb_id or None,
-            local_pdb_path=local_pdb or None,
-            configuration=config
+            local_pdb_path=local_pdb or None
         )
+        
+        # If PDB info provided, automatically add a PDB fetch step
+        if pdb_id or local_pdb:
+            from pathlib import Path
+            
+            pdb_config = {
+                'pdb_id': pdb_id or name,
+                'file_input_mode': 'searchPDB' if pdb_id else 'upload',
+                'file_path': str(Path(local_pdb)) if local_pdb else None,
+                'membrane_config': {
+                    'membrane_type': 'custom',
+                    'popc': True,
+                    'dopc': False,
+                    'dspc': False,
+                    'dmpc': False,
+                    'dppc': False,
+                    'chol_value': 20.0,
+                    'protein_topology': 'in'
+                },
+                'ion_configuration': {
+                    'ion_concentration': 0.15,
+                    'ion_type': 'KCl'
+                }
+            }
+            
+            self.plan_manager.add_pdb_fetch_step(
+                plan_id=plan.id,
+                name="Fetch PDB File",
+                description="Download or load PDB file with specified configuration",
+                pdb_config=pdb_config
+            )
         
         self.notify(f"Plan '{name}' created successfully")
         self.app.pop_screen()
@@ -207,13 +217,9 @@ class PlanDetailScreen(Screen):
             info_text += f"PDB ID: {plan.pdb_id}\n"
         if plan.local_pdb_path:
             info_text += f"Local PDB: {plan.local_pdb_path}\n"
-        if plan.configuration:
-            config_summary = "Configuration: "
-            if 'pdb_id' in plan.configuration:
-                config_summary += f"PDB: {plan.configuration['pdb_id']}"
-            if 'membrane_config' in plan.configuration:
-                config_summary += f", Membrane: {plan.configuration['membrane_config']['membrane_type']}"
-            info_text += config_summary + "\n"
+        # Show step configurations in the steps list
+        if plan.steps:
+            info_text += f"\nSteps: {len(plan.steps)} total\n"
         info.update(info_text)
         
         steps_list = self.query_one("#steps_list", ListView)

@@ -25,6 +25,7 @@ class AnalysisStep(BaseModel):
     description: str
     step_type: str
     parameters: Dict[str, Any] = Field(default_factory=dict)
+    configuration: Dict[str, Any] = Field(default_factory=dict)
     status: StepStatus = StepStatus.PENDING
     order: int = 0
     depends_on: List[str] = Field(default_factory=list)
@@ -48,7 +49,6 @@ class AnalysisPlan(BaseModel):
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    configuration: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class ExecutionProgress(BaseModel):
