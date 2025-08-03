@@ -16,10 +16,8 @@ MEMBRANE_TYPE_FIELD_NAME = "membraneType"
 
 class OprlmSeleniumClient:
 
-    def __init__(self):
+    def __init__(self, headless=True):
         self.driver = None
-
-    def init_selenium_oprlm_session(self, headless=True):
         chrome_options = self.get_default_chrome_options()
         if headless:
             chrome_options.add_argument("--headless")
@@ -31,7 +29,7 @@ class OprlmSeleniumClient:
         except Exception as e:
             print(f"ChromeDriver initialization failed: {e}")
             print("Trying alternative ChromeDriver setup...")
-            
+
             # Try alternative setup
             try:
                 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -40,7 +38,16 @@ class OprlmSeleniumClient:
             except Exception as e2:
                 print(f"Alternative setup also failed: {e2}")
                 raise
-        
+
+    def get_oprlm_processed_pdb(self, pdb_file_request: PdbFileOptionRequest):
+        self.__init_selenium_oprlm_session()
+        self.__search_membrane_or_upload_local_pdb(pdb_file_request)
+        self.__prepare_request_form(pdb_file_request)
+        self.__submit_and_wait_for_result(pdb_file_request)
+        return self.driver.page_source
+
+    def __init_selenium_oprlm_session(self):
+
         self.driver.get("https://oprlm.org/oprlm_server")
         
         # Wait for page to load
@@ -49,7 +56,7 @@ class OprlmSeleniumClient:
         )
 
 
-    def search_membrane_protein(self, pdb_file_request: PdbFileOptionRequest):
+    def __search_membrane_or_upload_local_pdb(self, pdb_file_request: PdbFileOptionRequest):
         # Select the file input mode
         self.__select_protein_structure(pdb_file_request.file_input_mode)
 
@@ -88,7 +95,7 @@ class OprlmSeleniumClient:
                 raise ValueError("file_path is required for CUSTOM file input mode")
             self.__upload_custom_pdb_file(pdb_file_request.file_path)
 
-    def submit_job(self, pdb_file_request: PdbFileOptionRequest):
+    def __prepare_request_form(self, pdb_file_request: PdbFileOptionRequest):
 
         # Fill membrane configuration based on MembraneConfig
 
@@ -120,16 +127,18 @@ class OprlmSeleniumClient:
         # Fill email and submit job
         self.__fill_text_field(By.ID, "userEmail", pdb_file_request.email or "abobus@gmail.com")
         
+
+    def __submit_and_wait_for_result(self, pdb_file_request: PdbFileOptionRequest):
         submit_button = self.driver.find_element(By.ID, "submit")
         submit_button.click()
-        
+
         print("Job submitted, waiting for completion...")
-        
+
         # Wait for job completion and download links
         WebDriverWait(self.driver, 3600).until(
             EC.presence_of_element_located((By.ID, "download_pdb"))
         )
-        
+
         print("Job completed! Downloading files...")
 
         # Use output_dir from PdbFileOptionRequest or create default
@@ -352,18 +361,8 @@ if __name__ == "__main__":
         .build()
 
     try:
-        oprlm_client = OprlmSeleniumClient()
-        print("Initializing browser session...")
-        oprlm_client.init_selenium_oprlm_session(headless=False)  # Set to True for headless
-        
-        print("Starting custom PDB upload...")
-        oprlm_client.search_membrane_protein(file_request)
-        print("File uploaded successfully!")
-        
-        print("Submitting job...")
-        oprlm_client.submit_job(file_request)
-        print("Job completed!")
-        
+        oprlm_client = OprlmSeleniumClient(headless=False)
+        oprlm_client.get_oprlm_processed_pdb(pdb_file_request=file_request)
     except Exception as e:
         print(f"Error occurred: {e}")
         print("\nTroubleshooting:")
