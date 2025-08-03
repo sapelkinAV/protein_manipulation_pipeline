@@ -2,42 +2,47 @@
 
 ## Overview
 
-The OPRLM client now supports both static PDB downloads and membrane system processing via the OPRLM server.
+The OPRLM client supports both static PDB downloads and membrane system processing via the OPRLM server using Selenium automation.
 
 ## Features
 
 ### 1. Static PDB Downloads
 ```python
-from src.api.oprlm_client import OPRLMClient
+from src.api.selenium_oprlm import OprlmSeleniumClient
 
 async def download_pdb(pdb_id):
-    async with OPRLMClient() as client:
-        success = await client.download_pdb("2W6V", Path("output.pdb"))
-        return success
+    client = OprlmSeleniumClient()
+    success = await client.download_pdb("2W6V", Path("output.pdb"))
+    return success
 ```
 
 ### 2. Membrane System Processing
 ```python
-from src.api.oprlm_client import OPRLMClient
+from src.api.selenium_oprlm import OprlmSeleniumClient
 
 async def process_membrane_system(pdb_id):
-    async with OPRLMClient(ssl_verify=False) as client:
-        # Submit membrane system query
-        job_id = await client.submit_membrane_query(
-            pdb_id="2W6V",
-            membrane_system='true',
-            orient='true'
-        )
+    client = OprlmSeleniumClient()
+    
+    # Search and process membrane protein
+    result = await client.search_membrane_protein(
+        pdb_id="2W6V",
+        membrane_type="Mammalian plasma membrane",
+        system_size=100,
+        water_thickness=20,
+        ion_concentration=0.15,
+        temperature=310.0,
+        minimize=True
+    )
+    
+    if result:
+        # Download results
+        pdb_path = Path("membrane_result.pdb")
+        charmm_gui_path = Path("charmm_gui_files.tgz")
+        md_input_path = Path("md_input_files.tgz")
         
-        if job_id:
-            # Process the result
-            success = await client.process_membrane_system(
-                pdb_id="2W6V",
-                output_path=Path("membrane_result.pdb"),
-                poll_interval=3.0,
-                timeout=300.0
-            )
-            return success
+        success = await client.download_results(result, pdb_path, charmm_gui_path, md_input_path)
+        return success
+    return False
 ```
 
 ## Running Tests
@@ -45,36 +50,17 @@ async def process_membrane_system(pdb_id):
 ### Unit Tests
 ```bash
 # Run all unit tests
-python -m pytest tests/test_oprlm_client.py -v
+python -m pytest tests/ -v
 
 # Run specific test categories
-python -m pytest tests/test_oprlm_client.py -k "membrane" -v
-python -m pytest tests/test_oprlm_client.py -k "pdb" -v
+python -m pytest tests/ -k "selenium" -v
+python -m pytest tests/ -k "pdb" -v
 ```
 
 ### Integration Tests
 ```bash
 # Run comprehensive membrane system tests
-python test_comprehensive.py
-
-# Test specific endpoints
-python test_api_structure.py
-```
-
-## Configuration
-
-### SSL Verification
-By default, SSL verification is enabled. For testing or environments with SSL issues:
-
-```python
-async with OPRLMClient(ssl_verify=False) as client:
-    # Your code here
-```
-
-### Custom Base URL
-```python
-async with OPRLMClient(base_url="https://your-oprlm-instance.com/oprlm_server") as client:
-    # Your code here
+python -m pytest tests/test_oprlm_workflow.py -v
 ```
 
 ## Error Handling

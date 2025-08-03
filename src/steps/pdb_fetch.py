@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, Any
 
 from .base import BaseStep
-from ..api.oprlm_client import OPRLMClient
+from ..api.selenium_oprlm import OprlmSeleniumClient
 from ..core.models import AnalysisStep
 
 
@@ -22,8 +22,8 @@ class PDBFetchStep(BaseStep):
 
         output_path = self.data_dir / self.output_filename
 
-        async with OPRLMClient() as client:
-            success = await client.download_pdb(self.pdb_id, output_path)
+        client = OprlmSeleniumClient()
+        success = await client.download_pdb(self.pdb_id, output_path)
 
         if not success:
             raise RuntimeError(f"Failed to download PDB {self.pdb_id}")
@@ -54,8 +54,8 @@ class PDBUploadStep(BaseStep):
         
         output_path = self.data_dir / self.output_filename
         
-        async with OPRLMClient() as client:
-            success = await client.orient_pdb(input_path, output_path)
+        client = OprlmSeleniumClient()
+        success = await client.orient_pdb(input_path, output_path)
         
         if not success:
             raise RuntimeError("Failed to orient PDB file")
