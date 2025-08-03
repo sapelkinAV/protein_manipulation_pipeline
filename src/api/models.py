@@ -176,6 +176,77 @@ class PdbFileOptionRequest:
         self.perform_charmm_minimization = perform_charmm_minimization
         self.md_input_options = md_input_options or MDInputOptions()
 
+    def to_dict(self) -> dict:
+        """Convert PdbFileOptionRequest to a dictionary for serialization."""
+        return {
+            'pdb_id': self.pdb_id,
+            'file_input_mode': self.file_input_mode.value,
+            'file_path': str(self.file_path) if self.file_path else None,
+            'email': self.email,
+            'membrane_config': {
+                'membrane_type': self.membrane_config.membrane_type.value,
+                'popc': self.membrane_config.popc,
+                'dopc': self.membrane_config.dopc,
+                'dspc': self.membrane_config.dspc,
+                'dmpc': self.membrane_config.dmpc,
+                'dppc': self.membrane_config.dppc,
+                'chol_value': self.membrane_config.chol_value,
+                'protein_topology': self.membrane_config.protein_topology.value
+            },
+            'input_protein_size_plus': self.input_protein_size_plus,
+            'water_thickness_z': self.water_thickness_z,
+            'ion_configuration': {
+                'ion_concentration': self.ion_configuration.ion_concentration,
+                'ion_type': self.ion_configuration.ion_type.value
+            },
+            'temperature': self.temperature,
+            'perform_charmm_minimization': self.perform_charmm_minimization,
+            'md_input_options': {
+                'namd_enabled': self.md_input_options.namd_enabled,
+                'gromacs_enabled': self.md_input_options.gromacs_enabled,
+                'openmm_enabled': self.md_input_options.openmm_enabled
+            }
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'PdbFileOptionRequest':
+        """Create PdbFileOptionRequest from dictionary."""
+        membrane_config = MembraneConfig(
+            membrane_type=MembraneType(data['membrane_config']['membrane_type']),
+            popc=data['membrane_config']['popc'],
+            dopc=data['membrane_config']['dopc'],
+            dspc=data['membrane_config']['dspc'],
+            dmpc=data['membrane_config']['dmpc'],
+            dppc=data['membrane_config']['dppc'],
+            chol_value=data['membrane_config']['chol_value'],
+            protein_topology=ProteinTopologyMembrane(data['membrane_config']['protein_topology'])
+        )
+        
+        ion_configuration = IonConfiguration(
+            ion_concentration=data['ion_configuration']['ion_concentration'],
+            ion_type=IonType(data['ion_configuration']['ion_type'])
+        )
+        
+        md_input_options = MDInputOptions(
+            namd_enabled=data['md_input_options']['namd_enabled'],
+            gromacs_enabled=data['md_input_options']['gromacs_enabled'],
+            openmm_enabled=data['md_input_options']['openmm_enabled']
+        )
+        
+        return cls(
+            pdb_id=data['pdb_id'],
+            file_input_mode=ProteinStructure(data['file_input_mode']),
+            file_path=Path(data['file_path']) if data['file_path'] else None,
+            email=data.get('email'),
+            membrane_config=membrane_config,
+            input_protein_size_plus=data['input_protein_size_plus'],
+            water_thickness_z=data['water_thickness_z'],
+            ion_configuration=ion_configuration,
+            temperature=data['temperature'],
+            perform_charmm_minimization=data['perform_charmm_minimization'],
+            md_input_options=md_input_options
+        )
+
     @staticmethod
     def builder():
         return PdbFileOptionRequestBuilder()

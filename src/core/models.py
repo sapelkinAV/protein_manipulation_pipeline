@@ -48,6 +48,7 @@ class AnalysisPlan(BaseModel):
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    configuration: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class ExecutionProgress(BaseModel):

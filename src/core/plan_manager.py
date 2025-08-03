@@ -1,4 +1,4 @@
-import json
+import yaml
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -17,7 +17,8 @@ class PlanManager:
     
     def create_plan(self, name: str, description: str, 
                    pdb_id: Optional[str] = None, 
-                   local_pdb_path: Optional[str] = None) -> AnalysisPlan:
+                   local_pdb_path: Optional[str] = None,
+                   configuration: Optional[Dict] = None) -> AnalysisPlan:
         """Create a new analysis plan."""
         plan_id = str(uuid.uuid4())[:8]
         
@@ -26,7 +27,8 @@ class PlanManager:
             name=name,
             description=description,
             pdb_id=pdb_id,
-            local_pdb_path=local_pdb_path
+            local_pdb_path=local_pdb_path,
+            configuration=configuration or {}
         )
         
         self._save_plan(plan)
@@ -48,13 +50,13 @@ class PlanManager:
         if plan_id in self._plans_cache:
             return self._plans_cache[plan_id]
         
-        plan_file = self.plans_dir / f"{plan_id}.json"
+        plan_file = self.plans_dir / f"{plan_id}.yaml"
         if not plan_file.exists():
             return None
         
         try:
             with open(plan_file, 'r') as f:
-                data = json.load(f)
+                data = yaml.safe_load(f)
             
             plan = AnalysisPlan(**data)
             self._plans_cache[plan_id] = plan
@@ -65,7 +67,7 @@ class PlanManager:
     def list_plans(self) -> List[AnalysisPlan]:
         """List all available plans."""
         plans = []
-        for plan_file in self.plans_dir.glob("*.json"):
+        for plan_file in self.plans_dir.glob("*.yaml"):
             plan_id = plan_file.stem
             plan = self.get_plan(plan_id)
             if plan:
@@ -120,7 +122,7 @@ class PlanManager:
     
     def delete_plan(self, plan_id: str) -> bool:
         """Delete a plan."""
-        plan_file = self.plans_dir / f"{plan_id}.json"
+        plan_file = self.plans_dir / f"{plan_id}.yaml"
         if plan_file.exists():
             plan_file.unlink()
             self._plans_cache.pop(plan_id, None)
@@ -129,9 +131,17 @@ class PlanManager:
     
     def _save_plan(self, plan: AnalysisPlan):
         """Save plan to disk."""
-        plan_file = self.plans_dir / f"{plan.id}.json"
+        plan_file = self.plans_dir / f"{plan.id}.yaml"
+        
+        # Convert to dict with string values for YAML compatibility
+        data = plan.model_dump()
+        
+        # Ensure enum values are converted to strings
+        data['status'] = plan.status.value
+        for step in data.get('steps', []):
+            step['status'] = step['status']
         
         with open(plan_file, 'w') as f:
-            json.dump(plan.model_dump(), f, indent=2, default=str)
+            yaml.dump(data, f, default_flow_style=False, sort_keys=False)
         
         self._plans_cache[plan.id] = plan
