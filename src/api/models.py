@@ -147,6 +147,7 @@ class PdbFileOptionRequest:
                  pdb_id: str,
                  file_input_mode: ProteinStructure,
                  file_path: Path = None,
+                 output_path: Path = None,
                  email: str = None,
                  membrane_config: MembraneConfig = None,
                  input_protein_size_plus: int = 20,
@@ -166,7 +167,7 @@ class PdbFileOptionRequest:
                 self.file_path = file_path
         else:
             self.file_path = None
-        self.output_dir = Path(f"/Users/sapelkinav/code/python/oprlm/data/pdb/step1_output/{pdb_id}")
+        self.output_path = output_path
         self.email = email
         self.membrane_config = membrane_config or MembraneConfig()
         self.input_protein_size_plus = input_protein_size_plus
@@ -310,6 +311,7 @@ class MembraneConfigBuilder:
 
 class PdbFileOptionRequestBuilder:
     def __init__(self):
+        self._output_path = None
         self._pdb_id = None
         self._file_input_mode = None
         self._file_path = None
@@ -335,6 +337,13 @@ class PdbFileOptionRequestBuilder:
             self._file_path = Path(path)
         else:
             self._file_path = path
+        return self
+
+    def output_path(self, path):
+        if isinstance(path, str):
+            self._output_path = Path(path)
+        else:
+            self._output_path = path
         return self
 
     def email(self, email: str):
@@ -378,6 +387,7 @@ class PdbFileOptionRequestBuilder:
             pdb_id=self._pdb_id,
             file_input_mode=self._file_input_mode,
             file_path=self._file_path,
+            output_path=self._output_path,
             email=self._email,
             membrane_config=self._membrane_config,
             input_protein_size_plus=self._input_protein_size_plus,

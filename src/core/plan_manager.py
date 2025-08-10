@@ -214,12 +214,9 @@ class PlanManager:
         data = plan.model_dump()
         
         # Ensure enum values are converted to strings
-        data['status'] = plan.status.value
+        data['status'] = str(plan.status.value)
         for step in data.get('steps', []):
-            if hasattr(step['status'], 'value'):
-                step['status'] = step['status'].value
-            else:
-                step['status'] = str(step['status'])
+            step['status'] = str(step['status'])
         
         with open(plan_file, 'w') as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)

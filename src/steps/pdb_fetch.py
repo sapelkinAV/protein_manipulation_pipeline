@@ -5,63 +5,75 @@ from typing import Dict, Any
 from .base import BaseStep
 from ..api.selenium_oprlm import OprlmSeleniumClient
 from ..core.models import AnalysisStep
+from .config import PdbFetchStepConfiguration, OprlmProcessingResult
+from ..api.models import PdbFileOptionRequest, ProteinStructure, MembraneConfig, IonConfiguration, MDInputOptions
 
 
 class PDBFetchStep(BaseStep):
-    """Step to fetch PDB file from OPRLM."""
+    """Step to fetch and process PDB file from OPRLM with unified configuration interface."""
 
     def __init__(self, step: AnalysisStep, working_dir: Path):
         super().__init__(step, working_dir)
-        self.pdb_id = step.parameters.get('pdb_id')
-        self.output_filename = step.parameters.get('output_filename', 'structure.pdb')
+        self.config = PdbFetchStepConfiguration(**step.configuration)
 
-    async def execute(self) -> Dict[str, Any]:
-        """Download PDB file from OPRLM."""
-        if not self.pdb_id:
+    async def execute(self) -> OprlmProcessingResult:
+        """Download and process PDB file from OPRLM."""
+        if not self.config.pdb_id:
             raise ValueError("pdb_id parameter is required")
 
-        output_path = self.data_dir / self.output_filename
-
-        client = OprlmSeleniumClient()
-        success = await client.download_pdb(self.pdb_id, output_path)
-
-        if not success:
-            raise RuntimeError(f"Failed to download PDB {self.pdb_id}")
-
-        return {
-            'pdb_file': str(output_path),
-            'pdb_id': self.pdb_id,
-            'file_size': output_path.stat().st_size
-        }
-
-
-class PDBUploadStep(BaseStep):
-    """Step to upload and orient PDB file via OPRLM."""
-
-    def __init__(self, step: AnalysisStep, working_dir: Path):
-        super().__init__(step, working_dir)
-        self.local_path = step.parameters.get('local_path')
-        self.output_filename = step.parameters.get('output_filename', 'oriented_structure.pdb')
-
-    async def execute(self) -> Dict[str, Any]:
-        """Upload and orient PDB file."""
-        if not self.local_path:
-            raise ValueError("local_path parameter is required")
-        
-        input_path = Path(self.local_path)
-        if not input_path.exists():
-            raise FileNotFoundError(f"Input file not found: {input_path}")
-        
-        output_path = self.data_dir / self.output_filename
+        # Create PdbFileOptionRequest from configuration
+        pdb_request = self._create_pdb_request()
         
         client = OprlmSeleniumClient()
-        success = await client.orient_pdb(input_path, output_path)
+        result = client.get_oprlm_processed_pdb(pdb_request)
         
-        if not success:
-            raise RuntimeError("Failed to orient PDB file")
+        # Save result metadata
+        self.save_result(result)
         
-        return {
-            'pdb_file': str(output_path),
-            'original_file': str(input_path),
-            'file_size': output_path.stat().st_size
-        }
+        return result
+
+    def _create_pdb_request(self) -> PdbFileOptionRequest:
+        """Create PdbFileOptionRequest from step configuration."""
+        
+        # Create membrane config
+        membrane_config = MembraneConfig(
+            membrane_type=self.config.membrane_type,
+            popc=self.config.popc,
+            dopc=self.config.dopc,
+            dspc=self.config.dspc,
+            dmpc=self.config.dmpc,
+            dppc=self.config.dppc,
+            chol_value=self.config.chol_value,
+            protein_topology=self.config.protein_topology
+        )
+        
+        # Create ion configuration
+        ion_config = IonConfiguration(
+            ion_concentration=self.config.ion_concentration,
+            ion_type=self.config.ion_type
+        )
+        
+        # Create MD input options
+        md_options = MDInputOptions(
+            namd_enabled=self.config.namd_enabled,
+            gromacs_enabled=self.config.gromacs_enabled,
+            openmm_enabled=self.config.openmm_enabled
+        )
+        
+        # Create output directory
+        output_dir = self.config.output_dir or (self.data_dir / self.config.pdb_id)
+        
+        return PdbFileOptionRequest(
+            pdb_id=self.config.pdb_id,
+            file_input_mode=ProteinStructure(self.config.file_input_mode),
+            file_path=self.config.file_path,
+            email=self.config.email,
+            membrane_config=membrane_config,
+            input_protein_size_plus=self.config.input_protein_size_plus,
+            water_thickness_z=self.config.water_thickness_z,
+            ion_configuration=ion_config,
+            temperature=self.config.temperature,
+            perform_charmm_minimization=self.config.perform_charmm_minimization,
+            md_input_options=md_options,
+            output_dir=output_dir
+        )

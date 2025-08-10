@@ -10,6 +10,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from src.api.models import ProteinStructure, MembraneConfig, MembraneType, ProteinTopologyMembrane, PdbFileOptionRequest, IonConfiguration, IonType, MDInputOptions
 from src.api.validators import MembraneConfigValidator
+from src.steps.config import OprlmProcessingResult
 
 PROTEIN_STRUCTURE_FIELD_NAME = "fileInputMode"
 MEMBRANE_TYPE_FIELD_NAME = "membraneType"
@@ -39,19 +40,21 @@ class OprlmSeleniumClient:
                 print(f"Alternative setup also failed: {e2}")
                 raise
 
-    def get_oprlm_processed_pdb(self, pdb_file_request: PdbFileOptionRequest):
+    def get_oprlm_processed_pdb(self, pdb_file_request: PdbFileOptionRequest) -> OprlmProcessingResult:
         self.__init_selenium_oprlm_session()
         self.__search_membrane_or_upload_local_pdb(pdb_file_request)
         self.__prepare_request_form(pdb_file_request)
         self.__submit_and_wait_for_result(pdb_file_request)
-        return self.driver.page_source
+        
+        # Download and organize results
+        return self.download_results(pdb_file_request)
 
     def __init_selenium_oprlm_session(self):
 
         self.driver.get("https://oprlm.org/oprlm_server")
         
         # Wait for page to load
-        WebDriverWait(self.driver, 10).until(
+        WebDriverWait(self.driver, 1000).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
 
@@ -60,7 +63,7 @@ class OprlmSeleniumClient:
         # Select the file input mode
         self.__select_protein_structure(pdb_file_request.file_input_mode)
 
-        if pdb_file_request.file_input_mode == ProteinStructure.RCSB or pdb_file_request.file_input_mode == ProteinStructure.OPRLM:
+        if pdb_file_request.file_input_mode.value == ProteinStructure.RCSB.value or pdb_file_request.file_input_mode.value == ProteinStructure.OPRLM.value:
             self.__fill_search_field("search-box", pdb_file_request.pdb_id)
             # Click the search button specifically within the api-search div
             search_button = WebDriverWait(self.driver, 10).until(
@@ -141,14 +144,19 @@ class OprlmSeleniumClient:
 
         print("Job completed! Downloading files...")
 
-        # Use output_dir from PdbFileOptionRequest or create default
-        download_dir = pdb_file_request.output_dir
-        download_dir.mkdir(parents=True, exist_ok=True)
+
         # Download all files
-        self.download_results(download_dir)
+        self.download_results(pdb_file_request)
         
-    def download_results(self, download_directory: Path):
+    def download_results(self, pdb_file_request: PdbFileOptionRequest) -> OprlmProcessingResult:
         import requests
+
+        # Use output_dir from PdbFileOptionRequest or create default
+        download_dir = pdb_file_request.output_path
+        download_dir.mkdir(parents=True, exist_ok=True)
+        # Use output_dir from PdbFileOptionRequest or create default
+        download_dir = pdb_file_request.output_path
+        download_dir.mkdir(parents=True, exist_ok=True)
         
         # Get all download links
         pdb_link = self.driver.find_element(By.ID, "download_pdb").get_attribute("href")
@@ -161,27 +169,52 @@ class OprlmSeleniumClient:
             'Referer': 'https://oprlm.org/'
         }
         
+        # Determine filenames based on pdb_id
+        pdb_id = pdb_file_request.pdb_id or "output"
+        pdb_filename = f"{pdb_id}.pdb"
+        
         files_to_download = [
-            (pdb_link, "step5_assembly.pdb"),
-            (ess_link, "md_input.tgz"),
-            (tgz_link, "charmm-gui.tgz")
+            (pdb_link, pdb_filename, "processed_pdb"),
+            (ess_link, "md_input.tgz", "md_input"),
+            (tgz_link, "charmm-gui.tgz", "charmm_gui")
         ]
         
-        for url, filename in files_to_download:
+        downloaded_files = {}
+        
+        for url, filename, file_type in files_to_download:
             if url:
-                filepath = download_directory / filename
+                filepath = download_dir / filename
                 print(f"Downloading {filename}...")
                 
-                response = requests.get(url, headers=headers, stream=True)
-                response.raise_for_status()
-                
-                with open(filepath, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                
-                print(f"Downloaded {filename} to {filepath}")
+                try:
+                    response = requests.get(url, headers=headers, stream=True)
+                    response.raise_for_status()
+                    
+                    with open(filepath, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    
+                    print(f"Downloaded {filename} to {filepath}")
+                    downloaded_files[file_type] = filepath
+                    
+                except Exception as e:
+                    print(f"Error downloading {filename}: {e}")
+                    downloaded_files[file_type] = None
             else:
                 print(f"Warning: {filename} link not found")
+                downloaded_files[file_type] = None
+        
+        # Create and return result object
+        return OprlmProcessingResult(
+            step_name=f"oprlm_process_{pdb_id}",
+            success=all(downloaded_files.values()),
+            original_pdb_path=None,  # This would be set if we had the original
+            processed_pdb_path=downloaded_files.get("processed_pdb"),
+            charmm_gui_path=downloaded_files.get("charmm_gui"),
+            md_input_path=downloaded_files.get("md_input"),
+            job_id=pdb_id,
+            membrane_type=pdb_file_request.membrane_config.membrane_type.value if pdb_file_request.membrane_config else None
+        )
 
 
     def get_default_chrome_options(self):
