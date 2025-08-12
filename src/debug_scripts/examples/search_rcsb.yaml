@@ -1,0 +1,24 @@
+# Example configuration for RCSB PDB search
+pdb_id: "1A1U"
+file_input_mode: "searchPDB"
+output_path: "data/results/1A1U"
+email: "abobus@gmail.com"
+
+membrane_config:
+  membrane_type: "PMm"
+  protein_topology: "in"
+
+input_protein_size_plus: 15
+water_thickness_z: 20.0
+
+ion_configuration:
+  ion_concentration: 0.1
+  ion_type: "KCl"
+
+temperature: 298.0
+perform_charmm_minimization: true
+
+md_input_options:
+  namd_enabled: false
+  gromacs_enabled: true
+  openmm_enabled: true

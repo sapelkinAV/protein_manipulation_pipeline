@@ -1,0 +1,30 @@
+# Example configuration for custom PDB file upload
+pdb_id: "2W6V_custom"
+file_input_mode: "upload"
+file_path: "src/debug_scripts/2W6V.pdb"
+email: "abobus@gmail.com"
+
+membrane_config:
+  membrane_type: "custom"
+  popc: true
+  dopc: true
+  dspc: true
+  dmpc: true
+  dppc: true
+  chol_value: 30.0
+  protein_topology: "out"
+
+input_protein_size_plus: 20
+water_thickness_z: 25.0
+
+ion_configuration:
+  ion_concentration: 0.15
+  ion_type: "NaCl"
+
+temperature: 310.0
+perform_charmm_minimization: false
+
+md_input_options:
+  namd_enabled: true
+  gromacs_enabled: false
+  openmm_enabled: false
