@@ -1,30 +1,30 @@
 # Example configuration for PDB search mode
 pdb_id: "3c02"
-file_input_mode: "searchOPM"
+file_input_mode: OPRLM
 output_path: "data/results/3c02"
 email: "abobus@gmail.com"
 
 membrane_config:
-  membrane_type: "custom"
-  popc: false
+  membrane_type: CUSTOM
+  popc: true
   dopc: true
-  dspc: false
-  dmpc: false
-  dppc: false
-  chol_value: 30.0
-  protein_topology: "out"
+  dspc: true
+  dmpc: true
+  dppc: true
+  chol_value: 80.0
+  protein_topology: OUT
 
 input_protein_size_plus: 20
 water_thickness_z: 25.0
 
 ion_configuration:
-  ion_concentration: 0.15
-  ion_type: "NaCl"
+  ion_concentration: 0.70
+  ion_type: NaCl
 
-temperature: 310.0
+temperature: 25.0
 perform_charmm_minimization: false
 
 md_input_options:
   namd_enabled: true
-  gromacs_enabled: true
+  gromacs_enabled: false
   openmm_enabled: true
