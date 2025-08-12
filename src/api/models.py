@@ -397,3 +397,70 @@ class PdbFileOptionRequestBuilder:
             perform_charmm_minimization=self._perform_charmm_minimization,
             md_input_options=self._md_input_options
         )
+
+
+class OprlmProcessingResult:
+    """Represents the result of an OPRLM processing operation."""
+    
+    def __init__(self,
+                 step_name: str,
+                 success: bool,
+                 original_pdb_path: Path = None,
+                 processed_pdb_path: Path = None,
+                 charmm_gui_path: Path = None,
+                 md_input_path: Path = None,
+                 job_id: str = None,
+                 membrane_type: str = None,
+                 error_message: str = None):
+        """
+        Initialize the processing result.
+        
+        Args:
+            step_name: Name of the processing step
+            success: Whether the processing was successful
+            original_pdb_path: Path to the original PDB file (if available)
+            processed_pdb_path: Path to the processed PDB file from OPRLM
+            charmm_gui_path: Path to the CHARMM-GUI output archive
+            md_input_path: Path to the MD input files archive
+            job_id: The job ID from OPRLM server
+            membrane_type: The membrane type used in processing
+            error_message: Error message if processing failed
+        """
+        self.step_name = step_name
+        self.success = success
+        self.original_pdb_path = original_pdb_path
+        self.processed_pdb_path = processed_pdb_path
+        self.charmm_gui_path = charmm_gui_path
+        self.md_input_path = md_input_path
+        self.job_id = job_id
+        self.membrane_type = membrane_type
+        self.error_message = error_message
+        
+    def to_dict(self) -> dict:
+        """Convert result to dictionary for serialization."""
+        return {
+            'step_name': self.step_name,
+            'success': self.success,
+            'original_pdb_path': str(self.original_pdb_path) if self.original_pdb_path else None,
+            'processed_pdb_path': str(self.processed_pdb_path) if self.processed_pdb_path else None,
+            'charmm_gui_path': str(self.charmm_gui_path) if self.charmm_gui_path else None,
+            'md_input_path': str(self.md_input_path) if self.md_input_path else None,
+            'job_id': self.job_id,
+            'membrane_type': self.membrane_type,
+            'error_message': self.error_message
+        }
+        
+    @classmethod
+    def from_dict(cls, data: dict) -> 'OprlmProcessingResult':
+        """Create OprlmProcessingResult from dictionary."""
+        return cls(
+            step_name=data['step_name'],
+            success=data['success'],
+            original_pdb_path=Path(data['original_pdb_path']) if data.get('original_pdb_path') else None,
+            processed_pdb_path=Path(data['processed_pdb_path']) if data.get('processed_pdb_path') else None,
+            charmm_gui_path=Path(data['charmm_gui_path']) if data.get('charmm_gui_path') else None,
+            md_input_path=Path(data['md_input_path']) if data.get('md_input_path') else None,
+            job_id=data.get('job_id'),
+            membrane_type=data.get('membrane_type'),
+            error_message=data.get('error_message')
+        )

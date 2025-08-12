@@ -7,7 +7,7 @@ from api.selenium_oprlm import OprlmSeleniumClient
 
 def download_selenium_oprlm_from_file():
     # Example for CUSTOM upload - using the test PDB file
-    test_pdb_path = Path("/Users/sapelkinav/code/python/oprlm/tests/2W6V.pdb")
+    test_pdb_path = Path(__file__).parent.parent / "2W6V.pdb"
 
     if not test_pdb_path.exists():
         print(f"Test PDB file not found: {test_pdb_path}")

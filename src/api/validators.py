@@ -1,4 +1,4 @@
-from src.api.models import MembraneConfig, ProteinStructure, MembraneType, ProteinTopologyMembrane, IonConfiguration, IonType, MDInputOptions
+from api.models import MembraneConfig, ProteinStructure, MembraneType, ProteinTopologyMembrane, IonConfiguration, IonType, MDInputOptions
 
 
 class MembraneConfigValidator:

@@ -8,9 +8,9 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-from src.api.models import ProteinStructure, MembraneConfig, MembraneType, ProteinTopologyMembrane, PdbFileOptionRequest, IonConfiguration, IonType, MDInputOptions
-from src.api.validators import MembraneConfigValidator
-from src.steps.config import OprlmProcessingResult
+from api.models import ProteinStructure, MembraneConfig, MembraneType, ProteinTopologyMembrane, PdbFileOptionRequest, IonConfiguration, IonType, MDInputOptions
+from api.validators import MembraneConfigValidator
+from api.models import OprlmProcessingResult
 
 PROTEIN_STRUCTURE_FIELD_NAME = "fileInputMode"
 MEMBRANE_TYPE_FIELD_NAME = "membraneType"
@@ -353,11 +353,11 @@ class OprlmSeleniumClient:
 
 if __name__ == "__main__":
     # Example for CUSTOM upload - using the test PDB file
-    test_pdb_path = Path("/Users/sapelkinav/code/python/oprlm/tests/2W6V.pdb")
+    test_pdb_path = Path("debug_scripts/2W6V.pdb")
 
     if not test_pdb_path.exists():
         print(f"Test PDB file not found: {test_pdb_path}")
-        print("Please ensure tests/2W6V.pdb exists")
+        print("Please ensure debug_scripts/2W6V.pdb exists")
         exit(1)
     
     print(f"Using test PDB file: {test_pdb_path}")
