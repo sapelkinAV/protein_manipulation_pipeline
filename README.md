@@ -56,22 +56,7 @@ results/
 
 ### YAML Configuration
 
-Create YAML files to define processing parameters for each protein. See [YAML_CONFIGURATION.md](YAML_CONFIGURATION.md) for complete documentation.
-
-**Quick example:**
-```yaml
-proteins:
-  - pdb_id: "2RH1"
-    file_input_mode: "searchPDB"
-    membrane_type: "PMm"
-    protein_topology: "in"
-  - pdb_id: "custom_protein"
-    file_input_mode: "upload"
-    file_path: "/path/to/protein.pdb"
-    membrane_type: "custom"
-    popc: true
-    chol_value: 25.0
-```
+Create YAML files to define processing parameters for each protein. See [HOW_TO_MAKE_YAML_CONFIG.md](HOW_TO_MAKE_YAML_CONFIG.md) for complete documentation.
 
 ### Alternative Usage (without wrapper)
 
