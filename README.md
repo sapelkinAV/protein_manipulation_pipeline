@@ -2,136 +2,90 @@
 
 A tool for automating biology analysis workflows, starting with PDB file loading from OPRLM.
 
-## Features
+## OPRLM Batch Downloader CLI
 
-- **PDB File Management**: Download from OPRLM or upload local PDB files
-- **Analysis Planning**: Create and manage multi-step analysis plans
-- **Terminal GUI**: Rich terminal interface for managing plans and executions
-- **Extensible Architecture**: Pluggable step system for adding new analysis stages
+A command-line utility for batch processing PDB files through OPRLM using YAML configuration files.
 
-## Installation
+### Quick Start
 
 ```bash
-pip install -r requirements.txt
+# Make the wrapper script executable
+chmod +x oprlm-batch
+
+# Run with example configurations
+./oprlm-batch -i ./src/debug_scripts/examples -o ./data --user sapelkinav --config-pattern "*.yaml"
+
+# Dry run to validate configurations
+./oprlm-batch -i ./configs -o ./results --dry-run
+
+# Process with custom settings
+./oprlm-batch -i ./my_configs -o ./my_results --user alice --max-workers 2 --headless --continue-on-error
 ```
 
-## Quick Start
+### CLI Arguments
 
-### Terminal GUI
-Launch the terminal interface:
+| Argument | Description | Example |
+|----------|-------------|---------|
+| `-i, --input-dir` | Directory with YAML configs | `./configs` |
+| `-o, --output-dir` | Output directory for results | `./results` |
+| `--user` | Username for launch ID | `alice` |
+| `--config-pattern` | YAML file pattern | `"*.yaml"` |
+| `--max-workers` | Concurrent jobs (default: 1) | `2` |
+| `--headless` | Run browser headless | |
+| `--continue-on-error` | Continue if individual jobs fail | |
+| `--dry-run` | Validate configs without processing | |
+| `-v, --verbose` | Enable verbose logging | |
+
+### Output Structure
+
+```
+results/
+├── alice_20250813_143052/
+│   ├── 1ABC/
+│   │   ├── processed.pdb
+│   │   ├── md_input.tgz
+│   │   ├── charmm-gui.tgz
+│   │   └── metadata.json
+│   ├── 2XYZ/
+│   │   └── ...
+│   ├── logs/
+│   │   ├── batch.log
+│   │   └── errors.log
+│   └── summary.json
+```
+
+### YAML Configuration
+
+Create YAML files to define processing parameters for each protein. See [YAML_CONFIGURATION.md](YAML_CONFIGURATION.md) for complete documentation.
+
+**Quick example:**
+```yaml
+proteins:
+  - pdb_id: "2RH1"
+    file_input_mode: "searchPDB"
+    membrane_type: "PMm"
+    protein_topology: "in"
+  - pdb_id: "custom_protein"
+    file_input_mode: "upload"
+    file_path: "/path/to/protein.pdb"
+    membrane_type: "custom"
+    popc: true
+    chol_value: 25.0
+```
+
+### Alternative Usage (without wrapper)
+
 ```bash
-python main.py --gui
+PYTHONPATH=src python -m cli.oprlm_batch_downloader \
+  -i ./configs -o ./results --user alice --config-pattern "*.yaml"
 ```
 
-### Command Line
-Create a sample plan:
-```bash
-python main.py --create-sample
-```
+### Configuration Examples
 
-List existing plans:
-```bash
-python main.py --list
-```
+The `src/debug_scripts/examples/` directory contains ready-to-use examples:
 
-## Architecture
+- `search_opm.yaml` - Search OPM database
+- `search_rcsb.yaml` - Search RCSB PDB
+- `custom_upload.yaml` - Process custom PDB files
 
-### Core Components
-
-- **Plan Manager** (`src/core/plan_manager.py`): Manages analysis plans and their state
-- **OPRLM Client** (`src/api/oprlm_client.py`): Handles communication with OPRLM server
-- **Steps** (`src/steps/`): Individual analysis step implementations
-- **GUI** (`src/gui/`): Terminal-based user interface
-
-### Directory Structure
-
-```
-oprlm/
-├── src/
-│   ├── api/           # API clients
-│   ├── core/          # Core models and management
-│   ├── gui/           # Terminal GUI
-│   ├── steps/         # Analysis step implementations
-│   └── utils/         # Utility functions
-├── tests/             # Test files
-├── plans/             # Stored analysis plans (JSON)
-├── data/              # Downloaded PDB files
-├── results/           # Analysis results
-└── config/            # Configuration files
-```
-
-## Usage Examples
-
-### Creating a Plan
-```python
-from src.core.plan_manager import PlanManager
-
-plan_manager = PlanManager()
-plan = plan_manager.create_plan(
-    name="My Analysis",
-    description="Analysis of protein 1ABC",
-    pdb_id="1ABC"
-)
-
-# Add a PDB fetch step
-from src.core.models import AnalysisStep
-fetch_step = AnalysisStep(
-    name="fetch_pdb",
-    description="Download PDB file",
-    step_type="pdb_fetch",
-    parameters={"pdb_id": "1ABC"}
-)
-plan_manager.add_step(plan.id, fetch_step)
-```
-
-### Running Analysis
-```python
-from src.steps.pdb_fetch import PDBFetchStep
-
-step = AnalysisStep(
-    name="fetch_pdb",
-    description="Download PDB file",
-    step_type="pdb_fetch",
-    parameters={"pdb_id": "1ABC", "output_filename": "1abc.pdb"}
-)
-
-fetch_step = PDBFetchStep(step, Path("./working_dir"))
-result = await fetch_step.execute()
-```
-
-## Development
-
-### Adding New Steps
-
-1. Create a new step class in `src/steps/`
-2. Inherit from `BaseStep`
-3. Implement the `execute` method
-4. Add step type to the GUI
-
-Example:
-```python
-from src.steps.base import BaseStep
-
-class MyAnalysisStep(BaseStep):
-    async def execute(self) -> Dict[str, Any]:
-        # Your analysis logic here
-        return {"result": "success"}
-```
-
-### API Endpoints
-
-The tool currently supports:
-- **PDB Download**: `https://oprlm.org/static/{pdb_id}.pdb`
-- **PDB Orient**: `https://oprlm.org/oprlm_server/orient`
-- **Job Status**: `https://oprlm.org/oprlm_server/job/{job_id}`
-
-## Future Steps
-
-1. **CAVER Integration**: Run CAVER analysis on PDB files
-2. **Z-slice Grid Generation**: Create search grids for pore analysis
-3. **Fragment Library Screening**: Implement FASTDock-style scoring
-4. **Full Ligand Docking**: Redock/minimize ligands at fragment seeds
-
-## License
-
-[Add your license here]
+Copy and modify these examples for your specific needs.

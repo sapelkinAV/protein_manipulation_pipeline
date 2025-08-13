@@ -1,7 +1,7 @@
 # Example configuration for custom PDB file upload
 pdb_id: "2W6V_custom"
 file_input_mode: CUSTOM
-file_path: "src/debug_scripts/2W6V.pdb"
+file_path: "/Users/sapelkinav/code/python/oprlm/src/debug_scripts/2W6V.pdb"
 email: "abobus@gmail.com"
 
 membrane_config:
